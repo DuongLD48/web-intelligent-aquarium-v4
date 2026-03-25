@@ -18,26 +18,24 @@
                 <span class="status-dot offline" id="dot-online"></span>
                 <span id="txt-online">Offline</span>
             </div>
-
-            <!-- Nav desktop -->
             <nav class="header-nav">
                 <a href="index.html">Dashboard</a>
                 <a href="user-settings.html" class="active">Settings</a>
                 <a href="admin.html">Admin</a>
-                <button id="btn-logout" onclick="import('./firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
+                <button id="btn-logout" onclick="import('./js/firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
             </nav>
 
-            <!-- Nav mobile: hamburger -->
+            <!-- Mobile hamburger -->
             <div class="mobile-menu" id="mobile-menu">
-                <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu" aria-expanded="false">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
                     <span></span><span></span><span></span>
                 </button>
                 <div class="mobile-dropdown" id="mobile-dropdown">
-                    <a href="index.html">📊 Dashboard</a>
-                    <a href="user-settings.html" class="active">⚙️ Settings</a>
-                    <a href="admin.html">🔧 Admin</a>
+                    <a href="index.html">Dashboard</a>
+                    <a href="user-settings.html" class="active">Settings</a>
+                    <a href="admin.html">Admin</a>
                     <div class="mobile-dropdown-divider"></div>
-                    <button onclick="import('./firebase-init.js').then(m => m.doLogout())">🚪 Đăng xuất</button>
+                    <button onclick="import('./js/firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
                 </div>
             </div>
         </header>
@@ -220,25 +218,19 @@
 
     <script type="module" src="js/user-settings.js"></script>
     <script>
-        (function() {
-            var btn = document.getElementById('hamburger-btn');
-            var dropdown = document.getElementById('mobile-dropdown');
-            if (!btn || !dropdown) return;
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                var open = dropdown.classList.toggle('open');
-                btn.setAttribute('aria-expanded', String(open));
-                btn.classList.toggle('active', open);
-            });
-            document.addEventListener('click', function() {
-                dropdown.classList.remove('open');
-                btn.setAttribute('aria-expanded', 'false');
-                btn.classList.remove('active');
-            });
-            dropdown.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-        })();
+        function toggleMobileMenu() {
+            var btn = document.getElementById("hamburger-btn");
+            var dd = document.getElementById("mobile-dropdown");
+            btn.classList.toggle("active");
+            dd.classList.toggle("open");
+        }
+        document.addEventListener("click", function(e) {
+            var menu = document.getElementById("mobile-menu");
+            if (menu && !menu.contains(e.target)) {
+                document.getElementById("hamburger-btn").classList.remove("active");
+                document.getElementById("mobile-dropdown").classList.remove("open");
+            }
+        });
     </script>
 </body>
 

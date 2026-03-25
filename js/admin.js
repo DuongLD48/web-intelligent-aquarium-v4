@@ -3,7 +3,7 @@
 // Admin config: pipeline + safety thresholds
 // ================================================================
 
-import { listenRef, updateRef, onConnectionChange, requireAuth, doLogout } from '../js/firebase-init.js';
+import { listenRef, updateRef, onConnectionChange, requireAuth, doLogout } from './firebase-init.js';
 
 // ================================================================
 // DEFAULTS
