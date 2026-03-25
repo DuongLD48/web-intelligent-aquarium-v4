@@ -3,7 +3,7 @@
 // Admin config: pipeline + safety thresholds
 // ================================================================
 
-import { listenRef, updateRef, onConnectionChange } from './firebase-init.js';
+import { listenRef, updateRef, onConnectionChange, requireAuth, doLogout } from './firebase-init.js';
 
 // ================================================================
 // DEFAULTS
@@ -129,7 +129,8 @@ const FIELD_MAP = {
 // ================================================================
 // INIT
 // ================================================================
-(function init() {
+(async function init() {
+    await requireAuth();
     attachInputListeners();
     attachResetConfirmListener();
 

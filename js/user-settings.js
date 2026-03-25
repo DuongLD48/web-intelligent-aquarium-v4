@@ -2,7 +2,7 @@
 // user-settings.js — Intelligent Aquarium v7.0
 // ================================================================
 
-import { listenRef, setRef, updateRef, onConnectionChange } from './firebase-init.js';
+import { listenRef, setRef, updateRef, onConnectionChange, requireAuth, doLogout } from './firebase-init.js';
 
 // ================================================================
 // DEFAULTS
@@ -72,7 +72,8 @@ let wcState = 'IDLE';
 // ================================================================
 // INIT
 // ================================================================
-(function init() {
+(async function init() {
+    await requireAuth();
     buildHourOptions();
     buildMinuteOptions();
     attachTooltips();

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập — Aquarium</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style-additions.css">
+    <style>
+        .login-wrap {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: var(--bg-page);
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 380px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem 2rem 1.75rem;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+        }
+
+        .login-logo {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.25rem;
+        }
+
+        .login-sub {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin-bottom: 1.75rem;
+        }
+
+        .login-field {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.78rem;
+            margin-bottom: 5px;
+        }
+
+        .login-input {
+            width: 100%;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            cursor: pointer;
+            border-radius: 8px;
+            border: none;
+        }
+
+        .login-error {
+            font-size: 0.75rem;
+            color: var(--accent-err);
+            margin-top: 0.75rem;
+            min-height: 18px;
+            text-align: center;
+        }
+
+        .login-footer {
+            margin-top: 1.5rem;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            text-align: center;
+            border-top: 1px solid var(--border-light);
+            padding-top: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-wrap">
+        <div class="login-card">
+            <div class="login-logo">🐟</div>
+            <div class="login-title">Intelligent Aquarium</div>
+            <div class="login-sub">Đăng nhập để truy cập hệ thống giám sát</div>
+
+            <div class="login-field">
+                <label class="form-label" for="inp-email">Email</label>
+                <input class="form-input login-input" type="email" id="inp-email"
+                    placeholder="email@example.com" autocomplete="email">
+            </div>
+
+            <div class="login-field">
+                <label class="form-label" for="inp-password">Mật khẩu</label>
+                <input class="form-input login-input" type="password" id="inp-password"
+                    placeholder="••••••••" autocomplete="current-password">
+            </div>
+
+            <button class="btn btn-primary login-btn" id="btn-login">
+                Đăng nhập
+            </button>
+
+            <div class="login-error" id="login-error"></div>
+
+            <div class="login-footer">
+                Intelligent Aquarium v4 &nbsp;·&nbsp; Hệ thống giám sát bể cá cảnh IoT
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import {
+            getAuth,
+            signInWithEmailAndPassword,
+            onAuthStateChanged,
+        } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBYG_spuhL7dE5qWxXOFoUItJQqtlLJP50",
+            authDomain: "intelligent-aquarium-4d05e.firebaseapp.com",
+            databaseURL: "https://intelligent-aquarium-4d05e-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "intelligent-aquarium-4d05e",
+            storageBucket: "intelligent-aquarium-4d05e.firebasestorage.app",
+            messagingSenderId: "1046247363217",
+            appId: "1:1046247363217:web:9603f01e61b877fb932530",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Nếu đã login rồi → redirect thẳng, không hiện form
+        onAuthStateChanged(auth, user => {
+            if (user) window.location.replace('index.html');
+        });
+
+        // ── Xử lý đăng nhập ──────────────────────────────────────
+        async function doLogin() {
+            const email    = document.getElementById('inp-email').value.trim();
+            const password = document.getElementById('inp-password').value;
+            const errEl    = document.getElementById('login-error');
+            const btn      = document.getElementById('btn-login');
+
+            errEl.textContent = '';
+
+            if (!email || !password) {
+                errEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu.';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Đang đăng nhập...';
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                window.location.replace('index.html');
+            } catch (e) {
+                errEl.textContent = _errMsg(e.code);
+                btn.disabled = false;
+                btn.textContent = 'Đăng nhập';
+            }
+        }
+
+        function _errMsg(code) {
+            switch (code) {
+                case 'auth/invalid-email':
+                    return 'Địa chỉ email không hợp lệ.';
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    return 'Email hoặc mật khẩu không đúng.';
+                case 'auth/too-many-requests':
+                    return 'Quá nhiều lần thử. Vui lòng thử lại sau ít phút.';
+                case 'auth/network-request-failed':
+                    return 'Lỗi kết nối mạng. Kiểm tra internet và thử lại.';
+                default:
+                    return 'Đăng nhập thất bại (' + code + ').';
+            }
+        }
+
+        // Click button
+        document.getElementById('btn-login').addEventListener('click', doLogin);
+
+        // Enter key
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter') doLogin();
+        });
+    </script>
+</body>
+
+</html>

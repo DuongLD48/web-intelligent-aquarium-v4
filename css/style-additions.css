@@ -485,3 +485,22 @@ body {
     color:        var(--text-dim);
     background:   var(--bg-card);
 }
+
+/* ── Logout button in header ──────────────────────────────────── */
+#btn-logout {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-sub);
+    font-size: 0.78rem;
+    padding: 3px 10px;
+    cursor: pointer;
+    margin-left: 4px;
+    transition: background 0.15s, color 0.15s;
+}
+
+#btn-logout:hover {
+    background: var(--accent-err);
+    border-color: var(--accent-err);
+    color: #fff;
+}

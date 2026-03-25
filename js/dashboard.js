@@ -4,7 +4,7 @@
 //      + fb_ph / fb_tds / fb_temp > 12 → sensor error UI
 // ================================================================
 
-import { listenRef, setRef, onConnectionChange } from './firebase-init.js';
+import { listenRef, setRef, onConnectionChange, requireAuth, doLogout } from './firebase-init.js';
 import { fetchHistory, onNewPoint, startPolling } from './history-service.js';
 import { initCharts, loadHistory, addPoint, exportCSV } from './chart-panel.js';
 
@@ -694,7 +694,8 @@ function injectSensorBrokenStyles() {
 // ================================================================
 // INIT
 // ================================================================
-(function init() {
+(async function init() {
+    await requireAuth();
     injectSensorBrokenStyles();
 
     listenRef('status', updateStatus);

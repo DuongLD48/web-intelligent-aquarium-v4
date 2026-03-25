@@ -4,6 +4,11 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
+    getAuth,
+    onAuthStateChanged,
+    signOut,
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
     getDatabase,
     ref,
     onValue,
@@ -28,8 +33,9 @@ const firebaseConfig = {
     appId: "1:1046247363217:web:9603f01e61b877fb932530",
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 
 const DEVICE_ID = "aquarium_1";
 
@@ -112,6 +118,38 @@ async function readOnce(path) {
 }
 
 // ----------------------------------------------------------------
+// Auth helpers
+// ----------------------------------------------------------------
+
+/**
+ * Gọi ở đầu mỗi trang cần bảo vệ.
+ * Nếu chưa đăng nhập → redirect về login.html tự động.
+ * Resolve khi đã xác nhận đăng nhập xong.
+ */
+function requireAuth() {
+    return new Promise((resolve, reject) => {
+        const unsub = onAuthStateChanged(auth, user => {
+            unsub();
+            if (user) {
+                resolve(user);
+            } else {
+                window.location.replace('login.html');
+                reject(new Error('unauthenticated'));
+            }
+        });
+    });
+}
+
+/**
+ * Đăng xuất — gọi từ nút logout trên header.
+ */
+function doLogout() {
+    signOut(auth).then(() => {
+        window.location.replace('login.html');
+    });
+}
+
+// ----------------------------------------------------------------
 // Exports
 // ----------------------------------------------------------------
 export {
@@ -124,4 +162,6 @@ export {
     pushRef,
     readOnce,
     onConnectionChange,
+    requireAuth,
+    doLogout,
 };
