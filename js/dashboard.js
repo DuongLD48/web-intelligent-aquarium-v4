@@ -4,7 +4,15 @@
 //      + fb_ph / fb_tds / fb_temp > 12 → sensor error UI
 // ================================================================
 
-import { listenRef, setRef, onConnectionChange, requireAuth, doLogout } from './firebase-init.js';
+import { listenRef, setRef, updateRef, readOnce, onConnectionChange, requireAuth, doLogout } from './firebase-init.js';
+import { db, DEVICE_ID } from './firebase-init.js';
+import {
+    ref as fbRef,
+    onChildAdded,
+    orderByKey,
+    query as fbQuery,
+    get as fbGet,
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { fetchHistory, onNewPoint, startPolling } from './history-service.js';
 import { initCharts, loadHistory, addPoint, exportCSV } from './chart-panel.js';
 
@@ -166,8 +174,7 @@ function updateStatus(snap) {
     const banner = document.getElementById('banner-safe-mode');
     banner.classList.toggle('visible', !!d.safe_mode);
 
-    // Cập nhật safety log từ last_safety_event (string) trong status node
-    updateLastSafetyEvent(d.last_safety_event || 'NONE');
+    // Safety log giờ đọc từ Firebase history/last_safety_event (realtime)
 }
 
 // ================================================================
@@ -283,19 +290,7 @@ function updateTelemetry(snap) {
         setSourceBadge('badge-tds-src', d.tds_source);
     }
 
-    // ── Shock banner ─────────────────────────────────────────────
-    // Hiện banner nếu có bất kỳ shock flag nào (không tính sensor bị hư)
-    var hasShockPh = !!d.shock_ph && !phBroken;
-    var hasShockTemp = !!d.shock_temp && !tempBroken;
-    if (hasShockPh || hasShockTemp) {
-        showShockBanner(
-            hasShockPh,
-            hasShockTemp,
-            hasShockPh ? d.ph : null,
-            hasShockTemp ? d.temperature : null,
-            d.timestamp || null // Unix seconds từ firmware
-        );
-    }
+    // Shock events giờ được xử lý qua Firebase history/shock_event_ph|temp
 }
 
 function setStatusDot(dotId, status) {
@@ -377,106 +372,200 @@ function shockFlash(cardId) {
 }
 
 // ================================================================
-// SHOCK BANNER
-// Hiện khi phát hiện shock_ph / shock_temperature.
-// KHÔNG tự đóng — chỉ tắt khi người dùng bấm ✕.
-// Hiển thị thời gian xảy ra và đếm thời gian đã trôi qua.
+// SHOCK DIALOG + SHOCK LOG
+// Dialog popup cho event mới nhất chưa đọc.
+// Log bảng gộp pH + Temp, click row để mark read.
 // ================================================================
-var _shockBannerReady = false;
-var _shockBannerTimeTs = null; // timestamp (ms) lúc shock xảy ra
-var _shockTimeInterval = null; // interval cập nhật chip thời gian
 
-function initShockBanner() {
-    if (_shockBannerReady) return;
-    var btn = document.getElementById('shock-banner-dismiss');
-    if (btn) {
-        btn.addEventListener('click', function() { hideShockBanner(); });
-    }
-    _shockBannerReady = true;
+const SHOCK_PH_PATH = () => `devices/${DEVICE_ID}/history/shock_event_ph`;
+const SHOCK_TEMP_PATH = () => `devices/${DEVICE_ID}/history/shock_event_temp`;
+const SAFETY_FB_PATH = () => `devices/${DEVICE_ID}/history/last_safety_event`;
+
+var _shockEntries = []; // { key, type:'ph'|'temp', before, after, tsMs, is_read }
+var _shockDialogReady = false;
+var _shockDialogCurrentKey = null;
+var _shockDialogCurrentType = null;
+
+function _initShockDialog() {
+    if (_shockDialogReady) return;
+    var btn = document.getElementById('shock-dialog-confirm');
+    if (btn) btn.addEventListener('click', _onShockDialogConfirm);
+    var overlay = document.getElementById('shock-dialog-overlay');
+    if (overlay) overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) _onShockDialogConfirm();
+    });
+    _shockDialogReady = true;
 }
 
-/**
- * Hiện shock banner với nội dung phù hợp.
- * Không tự đóng — người dùng phải bấm ✕.
- * Nếu đã đang hiện mà shock mới đến → cập nhật nội dung + reset timer.
- */
-function showShockBanner(shockPh, shockTemp, phVal, tempVal, tsSeconds) {
-    initShockBanner();
-    var banner = document.getElementById('banner-shock');
-    var titleEl = document.getElementById('shock-banner-title');
-    var detailEl = document.getElementById('shock-banner-detail');
-    if (!banner || !titleEl || !detailEl) return;
+function _showShockDialog(key, type, before, after, tsMs) {
+    _initShockDialog();
+    _shockDialogCurrentKey = key;
+    _shockDialogCurrentType = type;
 
-    var both = shockPh && shockTemp;
-    var title, detail;
+    var overlay = document.getElementById('shock-dialog-overlay');
+    var titleEl = document.getElementById('shock-dialog-title');
+    var beforeEl = document.getElementById('shock-dialog-before');
+    var afterEl = document.getElementById('shock-dialog-after');
+    var labelEl = document.getElementById('shock-dialog-label');
+    var timeEl = document.getElementById('shock-dialog-time');
+    if (!overlay) return;
 
-    if (both) {
-        title = 'Shock pH & Nhiệt độ';
-        var parts = [];
-        if (phVal !== null) parts.push('pH ' + parseFloat(phVal).toFixed(2));
-        if (tempVal !== null) parts.push('T ' + parseFloat(tempVal).toFixed(1) + '°C');
-        detail = (parts.length ? parts.join(' · ') + ' — ' : '') + 'pH pump tạm dừng 1 chu kỳ';
-        banner.classList.add('critical');
-    } else if (shockPh) {
-        title = 'Shock pH';
-        detail = (phVal !== null ? 'pH ' + parseFloat(phVal).toFixed(2) + ' — ' : '') + 'pH pump tạm dừng 1 chu kỳ';
-        banner.classList.remove('critical');
-    } else if (shockTemp) {
-        title = 'Shock nhiệt độ';
-        detail = tempVal !== null ? 'T ' + parseFloat(tempVal).toFixed(1) + '°C' : '';
-        banner.classList.remove('critical');
+    if (type === 'ph') {
+        if (titleEl) titleEl.textContent = '⚡ Shock pH phát hiện';
+        if (labelEl) labelEl.textContent = 'pH';
+        if (beforeEl) beforeEl.textContent = parseFloat(before).toFixed(2);
+        if (afterEl) afterEl.textContent = parseFloat(after).toFixed(2);
     } else {
+        if (titleEl) titleEl.textContent = '🌡 Shock Nhiệt độ phát hiện';
+        if (labelEl) labelEl.textContent = 'Nhiệt độ';
+        if (beforeEl) beforeEl.textContent = parseFloat(before).toFixed(1) + '°C';
+        if (afterEl) afterEl.textContent = parseFloat(after).toFixed(1) + '°C';
+    }
+    if (timeEl) timeEl.textContent = toVnDate(tsMs);
+
+    overlay.classList.remove('visible');
+    void overlay.offsetWidth;
+    overlay.classList.add('visible');
+}
+
+function _onShockDialogConfirm() {
+    var overlay = document.getElementById('shock-dialog-overlay');
+    if (overlay) overlay.classList.remove('visible');
+
+    if (_shockDialogCurrentKey && _shockDialogCurrentType) {
+        var basePath = (_shockDialogCurrentType === 'ph' ? SHOCK_PH_PATH() : SHOCK_TEMP_PATH()) +
+            '/' + _shockDialogCurrentKey + '/is_read';
+        // Tách bỏ prefix devices/DEVICE_ID/ để dùng setRef
+        var relPath = basePath.replace('devices/' + DEVICE_ID + '/', '');
+        setRef(relPath, true).catch(e => console.warn('[shock] mark read failed:', e));
+
+        var entry = _shockEntries.find(function(e) {
+            return e.key === _shockDialogCurrentKey && e.type === _shockDialogCurrentType;
+        });
+        if (entry) entry.is_read = true;
+        _renderShockLog();
+        _updateShockBadge();
+    }
+    _shockDialogCurrentKey = null;
+    _shockDialogCurrentType = null;
+}
+
+// ── Load lịch sử ────────────────────────────────────────────────
+async function _loadShockEvents() {
+    await Promise.all([_loadShockType('ph'), _loadShockType('temp')]);
+    _shockEntries.sort(function(a, b) { return b.tsMs - a.tsMs; });
+    _renderShockLog();
+    _updateShockBadge();
+    _checkShowShockDialog();
+}
+
+async function _loadShockType(type) {
+    var path = type === 'ph' ? SHOCK_PH_PATH() : SHOCK_TEMP_PATH();
+    try {
+        var snap = await fbGet(fbRef(db, path));
+        if (!snap.exists()) return;
+        snap.forEach(function(child) { _upsertShockEntry(child.key, type, child.val()); });
+    } catch (e) { console.warn('[shock] load error:', type, e); }
+}
+
+function _upsertShockEntry(key, type, v) {
+    var idx = _shockEntries.findIndex(function(e) { return e.key === key && e.type === type; });
+    var entry = {
+        key,
+        type,
+        before: type === 'ph' ? v.ph_before : v.temp_before,
+        after: type === 'ph' ? v.ph_after : v.temp_after,
+        tsMs: parseInt(key) * 1000,
+        is_read: !!v.is_read,
+    };
+    if (idx >= 0) _shockEntries[idx] = entry;
+    else _shockEntries.push(entry);
+}
+
+// ── Realtime ────────────────────────────────────────────────────
+function _startShockRealtime() {
+    _startShockRealtimeType('ph');
+    _startShockRealtimeType('temp');
+}
+
+function _startShockRealtimeType(type) {
+    var path = type === 'ph' ? SHOCK_PH_PATH() : SHOCK_TEMP_PATH();
+    var q = fbQuery(fbRef(db, path), orderByKey());
+    var _seenKeys = new Set(_shockEntries.filter(e => e.type === type).map(e => e.key));
+    onChildAdded(q, function(child) {
+        var isNew = !_seenKeys.has(child.key);
+        _seenKeys.add(child.key);
+        _upsertShockEntry(child.key, type, child.val());
+        _shockEntries.sort(function(a, b) { return b.tsMs - a.tsMs; });
+        _renderShockLog();
+        _updateShockBadge();
+        if (isNew && !child.val().is_read) {
+            var entry = _shockEntries.find(function(e) { return e.key === child.key && e.type === type; });
+            if (entry) _showShockDialog(entry.key, entry.type, entry.before, entry.after, entry.tsMs);
+        }
+    });
+}
+
+function _checkShowShockDialog() {
+    if (_shockEntries.length === 0) return;
+    var newest = _shockEntries[0];
+    if (!newest.is_read) {
+        _showShockDialog(newest.key, newest.type, newest.before, newest.after, newest.tsMs);
+    }
+}
+
+// ── Render shock log ────────────────────────────────────────────
+function _renderShockLog() {
+    var tbody = document.getElementById('shock-log-body');
+    if (!tbody) return;
+    if (_shockEntries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px 0;font-size:0.75rem">Chưa có sự kiện shock</td></tr>';
         return;
     }
+    tbody.innerHTML = _shockEntries.map(function(e) {
+        var typeIcon = e.type === 'ph' ? '⚗' : '🌡';
+        var typeLbl = e.type === 'ph' ? 'pH' : 'Nhiệt';
+        var beforeStr = e.type === 'ph' ?
+            parseFloat(e.before).toFixed(2) :
+            parseFloat(e.before).toFixed(1) + '°';
+        var afterStr = e.type === 'ph' ?
+            parseFloat(e.after).toFixed(2) :
+            parseFloat(e.after).toFixed(1) + '°';
+        var delta = parseFloat(e.after) - parseFloat(e.before);
+        var deltaStr = (delta > 0 ? '+' : '') + (e.type === 'ph' ? delta.toFixed(2) : delta.toFixed(1));
+        var deltaCls = delta < 0 ? 'shock-delta-down' : 'shock-delta-up';
+        var unread = !e.is_read;
+        var rowCls = unread ? 'shock-log-row unread' : 'shock-log-row';
+        var dotHtml = unread ?
+            '<span class="log-dot warn" style="flex-shrink:0"></span>' :
+            '<span class="log-dot" style="background:var(--text-dim);opacity:0.3;flex-shrink:0"></span>';
+        return '<tr class="' + rowCls + '" data-key="' + e.key + '" data-type="' + e.type + '">' +
+            '<td>' + dotHtml + '</td>' +
+            '<td class="mono" style="font-size:0.72rem">' + toVnDate(e.tsMs) + '</td>' +
+            '<td><span class="shock-type-chip shock-type-' + e.type + '">' + typeIcon + ' ' + typeLbl + '</span></td>' +
+            '<td class="mono" style="font-size:0.72rem">' + beforeStr + ' → ' + afterStr + '</td>' +
+            '<td class="mono ' + deltaCls + '" style="font-size:0.72rem">' + deltaStr + '</td>' +
+            '</tr>';
+    }).join('');
 
-    titleEl.textContent = title;
-    detailEl.textContent = detail;
-
-    // Lưu thời điểm shock từ timestamp firmware (chính xác hơn Date.now())
-    _shockBannerTimeTs = tsSeconds ? tsSeconds * 1000 : Date.now();
-    _startShockTimeClock();
-
-    // Hiện banner (force re-trigger animation nếu đã visible)
-    banner.classList.remove('visible');
-    void banner.offsetWidth;
-    banner.classList.add('visible');
+    tbody.querySelectorAll('tr.shock-log-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+            var key = row.dataset.key;
+            var type = row.dataset.type;
+            var entry = _shockEntries.find(function(e) { return e.key === key && e.type === type; });
+            if (entry && !entry.is_read) {
+                _showShockDialog(entry.key, entry.type, entry.before, entry.after, entry.tsMs);
+            }
+        });
+    });
 }
 
-/** Cập nhật chip thời gian mỗi giây */
-function _startShockTimeClock() {
-    if (_shockTimeInterval) clearInterval(_shockTimeInterval);
-    _updateShockTimeChip();
-    _shockTimeInterval = setInterval(_updateShockTimeChip, 1000);
-}
-
-function _updateShockTimeChip() {
-    var el = document.getElementById('shock-banner-time');
-    if (!el || !_shockBannerTimeTs) return;
-    var elapsed = Math.floor((Date.now() - _shockBannerTimeTs) / 1000);
-    var timeStr = toVnTime(_shockBannerTimeTs);
-    var ago;
-    if (elapsed < 60) {
-        ago = elapsed + ' giây trước';
-    } else if (elapsed < 3600) {
-        ago = Math.floor(elapsed / 60) + ' phút trước';
-    } else {
-        var h = Math.floor(elapsed / 3600);
-        var m = Math.floor((elapsed % 3600) / 60);
-        ago = h + ' giờ' + (m > 0 ? ' ' + m + ' phút' : '') + ' trước';
-    }
-    el.textContent = timeStr + ' · ' + ago;
-}
-
-function hideShockBanner() {
-    var banner = document.getElementById('banner-shock');
-    if (banner) banner.classList.remove('visible', 'critical');
-    if (_shockTimeInterval) {
-        clearInterval(_shockTimeInterval);
-        _shockTimeInterval = null;
-    }
-    _shockBannerTimeTs = null;
-    var el = document.getElementById('shock-banner-time');
-    if (el) el.textContent = '';
+function _updateShockBadge() {
+    var unread = _shockEntries.filter(function(e) { return !e.is_read; }).length;
+    var badge = document.getElementById('shock-log-badge');
+    if (!badge) return;
+    badge.textContent = unread;
+    badge.classList.toggle('hidden', unread === 0);
 }
 
 // ================================================================
@@ -691,89 +780,13 @@ function setDrift(elId, val) {
 }
 
 // ================================================================
-// SAFETY EVENTS — đọc từ status.last_safety_event (string)
-// Firmware chỉ ghi 1 event gần nhất, không có list lịch sử.
-// Dashboard tự tích luỹ tối đa MAX_LOG_ENTRIES entries trong session.
+// SAFETY LOG — đọc từ Firebase history/last_safety_event
+// is_read: false → chưa đọc (badge đỏ)
+// Mở panel → mark all is_read = true
 // ================================================================
 const CRITICAL_EVENTS = ['THERMAL_CUTOFF', 'EMERGENCY_COOL'];
-const MAX_LOG_ENTRIES = 10;
-var _logEntries = []; // tích luỹ trong session
-var _lastEventStr = null; // event string đã xử lý lần trước
-
-/**
- * Gọi từ updateStatus() mỗi khi status thay đổi.
- * @param {string} eventStr  — ví dụ "THERMAL_CUTOFF", "NONE", "SHOCK_GUARD"
- */
-function updateLastSafetyEvent(eventStr) {
-    // Bỏ qua nếu không có event hoặc giống lần trước
-    if (!eventStr || eventStr === 'NONE') {
-        renderSafetyLog();
-        return;
-    }
-    if (eventStr === _lastEventStr) return;
-    _lastEventStr = eventStr;
-
-    // Thêm entry mới vào đầu danh sách, giữ tối đa MAX_LOG_ENTRIES
-    _logEntries.unshift({
-        event: eventStr,
-        receivedAt: Date.now(), // timestamp phía client (ms)
-    });
-    if (_logEntries.length > MAX_LOG_ENTRIES) {
-        _logEntries = _logEntries.slice(0, MAX_LOG_ENTRIES);
-    }
-
-    renderSafetyLog();
-    updateLogCountBadge();
-}
-
-function updateLogCountBadge() {
-    // Đếm entries nhận được hôm nay
-    const todayStr = new Date(Date.now() + VN_OFFSET).toDateString();
-    var todayCount = _logEntries.filter(function(e) {
-        return new Date(e.receivedAt + VN_OFFSET).toDateString() === todayStr;
-    }).length;
-    const badge = document.getElementById('log-count-badge');
-    if (!badge) return;
-    if (todayCount > 0) {
-        badge.textContent = todayCount;
-        badge.classList.remove('hidden');
-    } else {
-        badge.classList.add('hidden');
-    }
-}
-
-function renderSafetyLog() {
-    const tbody = document.getElementById('safety-log-body');
-    if (!tbody) return;
-    if (_logEntries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:16px 0;font-size:0.75rem">Chưa có sự kiện</td></tr>';
-        return;
-    }
-    tbody.innerHTML = _logEntries.map(function(e) {
-        const isCrit = CRITICAL_EVENTS.includes(e.event);
-        const isShock = e.event === 'SHOCK_GUARD';
-        const dotCls = isCrit ? 'critical' : 'warn';
-        const tsStr = toVnTime(e.receivedAt);
-        const rowClass = isShock ? ' class="log-row-shock"' : '';
-
-        // Cột 4: shock → chip, critical → label đỏ, còn lại trống
-        var valCell;
-        if (isShock) {
-            valCell = '<td class="event-val"><span class="log-shock-chip fallback">pH pump dừng</span></td>';
-        } else if (isCrit) {
-            valCell = '<td class="event-val" style="color:var(--accent-err);font-size:0.68rem;font-weight:600">CRITICAL</td>';
-        } else {
-            valCell = '<td class="event-val"></td>';
-        }
-
-        return '<tr' + rowClass + '>' +
-            '<td><span class="log-dot ' + dotCls + '"></span></td>' +
-            '<td>' + tsStr + '</td>' +
-            '<td class="event-name">' + fmtEventName(e.event) + '</td>' +
-            valCell +
-            '</tr>';
-    }).join('');
-}
+var _safetyEntries = []; // { key, event, tsMs, is_read }
+var _safetyPanelOpen = false;
 
 function fmtEventName(raw) {
     const MAP = {
@@ -789,6 +802,97 @@ function fmtEventName(raw) {
     };
     return MAP[raw] || raw;
 }
+
+async function _loadSafetyEvents() {
+    try {
+        var snap = await fbGet(fbRef(db, SAFETY_FB_PATH()));
+        if (!snap.exists()) { _renderSafetyLog(); return; }
+        snap.forEach(function(child) { _upsertSafetyEntry(child.key, child.val()); });
+        _safetyEntries.sort(function(a, b) { return b.tsMs - a.tsMs; });
+        _renderSafetyLog();
+        _updateSafetyBadge();
+    } catch (e) { console.warn('[safety] load error:', e); }
+}
+
+function _upsertSafetyEntry(key, v) {
+    var idx = _safetyEntries.findIndex(function(e) { return e.key === key; });
+    var entry = { key, event: v.event, tsMs: parseInt(key) * 1000, is_read: !!v.is_read };
+    if (idx >= 0) _safetyEntries[idx] = entry;
+    else _safetyEntries.push(entry);
+}
+
+function _startSafetyRealtime() {
+    var q = fbQuery(fbRef(db, SAFETY_FB_PATH()), orderByKey());
+    var _seenKeys = new Set(_safetyEntries.map(e => e.key));
+    onChildAdded(q, function(child) {
+        var isNew = !_seenKeys.has(child.key);
+        _seenKeys.add(child.key);
+        _upsertSafetyEntry(child.key, child.val());
+        _safetyEntries.sort(function(a, b) { return b.tsMs - a.tsMs; });
+        _renderSafetyLog();
+        if (isNew) _updateSafetyBadge();
+    });
+}
+
+function _renderSafetyLog() {
+    var tbody = document.getElementById('safety-log-body');
+    if (!tbody) return;
+    if (_safetyEntries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:16px 0;font-size:0.75rem">Chưa có sự kiện</td></tr>';
+        return;
+    }
+    tbody.innerHTML = _safetyEntries.map(function(e) {
+        var isCrit = CRITICAL_EVENTS.includes(e.event);
+        var dotCls = isCrit ? 'log-dot critical' : 'log-dot warn';
+        var unread = !e.is_read;
+        var rowStyle = unread ? ' style="font-weight:600"' : ' style="opacity:0.7"';
+        var unreadDot = unread ?
+            '<span class="safety-unread-dot"></span>' :
+            '';
+        var valCell = isCrit ?
+            '<td class="event-val" style="color:var(--accent-err);font-size:0.68rem;font-weight:600">CRITICAL</td>' :
+            '<td class="event-val"></td>';
+        return '<tr' + rowStyle + '>' +
+            '<td><span class="' + dotCls + '"></span>' + unreadDot + '</td>' +
+            '<td>' + toVnDate(e.tsMs) + '</td>' +
+            '<td class="event-name">' + fmtEventName(e.event) + '</td>' +
+            valCell +
+            '</tr>';
+    }).join('');
+}
+
+function _updateSafetyBadge() {
+    var unread = _safetyEntries.filter(function(e) { return !e.is_read; }).length;
+    var badge = document.getElementById('log-count-badge');
+    if (!badge) return;
+    badge.textContent = unread;
+    badge.classList.toggle('hidden', unread === 0);
+}
+
+/** Gọi khi người dùng mở panel safety log → mark all read */
+function _markAllSafetyRead() {
+    var unreadEntries = _safetyEntries.filter(function(e) { return !e.is_read; });
+    if (unreadEntries.length === 0) return;
+    unreadEntries.forEach(function(e) {
+        e.is_read = true;
+        var relPath = 'history/last_safety_event/' + e.key + '/is_read';
+        setRef(relPath, true).catch(function(err) { console.warn('[safety] mark read failed:', err); });
+    });
+    _renderSafetyLog();
+    _updateSafetyBadge();
+}
+
+// Safety log panel toggle (gắn vào nút xem log nếu có)
+function toggleSafetyLog() {
+    var panel = document.getElementById('safety-log-panel');
+    if (!panel) return;
+    _safetyPanelOpen = !_safetyPanelOpen;
+    panel.classList.toggle('open', _safetyPanelOpen);
+    var hint = document.getElementById('safety-log-toggle-hint');
+    if (hint) hint.textContent = _safetyPanelOpen ? '▲ thu gọn' : '▼ nhấn để xem & đánh dấu đã đọc';
+    if (_safetyPanelOpen) _markAllSafetyRead();
+}
+window.toggleSafetyLog = toggleSafetyLog;
 
 // ================================================================
 // INJECT CSS cho sensor-broken UI
@@ -909,7 +1013,14 @@ function injectSensorBrokenStyles() {
     listenRef('water_change', updateWaterChange);
     listenRef('settings/water_schedule', updateWaterSchedule);
     listenRef('analytics', updateAnalytics);
-    // safety events đọc từ status.last_safety_event — xử lý trong updateStatus()
+
+    // ── Shock events + Safety log — đọc từ Firebase history ─────
+    // Load lịch sử trước, rồi bật realtime sau (tránh onChildAdded replay)
+    await _loadShockEvents();
+    _startShockRealtime();
+
+    await _loadSafetyEvents();
+    _startSafetyRealtime();
 
     // Firmware staleness watcher
     startStalenessWatcher();

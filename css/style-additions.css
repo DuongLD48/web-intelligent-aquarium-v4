@@ -586,285 +586,6 @@ body {
 
 
 /* ================================================================
-   SHOCK WARNING BANNER
-   Hiện phía dưới các banner khác khi shock_ph / shock_temp = true.
-   Auto-dismiss sau 20s, hoặc người dùng bấm ✕.
-   ================================================================ */
-
-.shock-banner {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    background: rgba(217, 119, 6, 0.08);
-    border-bottom: 1px solid rgba(217, 119, 6, 0.28);
-    color: var(--accent-warn, #d97706);
-    font-size: 0.8rem;
-    animation: shock-slide-in 0.25s ease;
-}
-
-.shock-banner.visible {
-    display: flex;
-}
-
-
-/* Khi cả hai shock cùng lúc → đổi màu đỏ */
-
-.shock-banner.critical {
-    background: rgba(220, 38, 38, 0.08);
-    border-bottom-color: rgba(220, 38, 38, 0.28);
-    color: var(--accent-err, #dc2626);
-}
-
-@keyframes shock-slide-in {
-    from {
-        opacity: 0;
-        transform: translateY(-4px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-
-/* Icon nhấp nháy */
-
-.shock-banner-icon {
-    font-size: 0.9rem;
-    flex-shrink: 0;
-    animation: shock-pulse 1.3s ease-in-out infinite;
-}
-
-@keyframes shock-pulse {
-    0%,
-    100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.4;
-    }
-}
-
-
-/* Nội dung text */
-
-.shock-banner-body {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    flex: 1;
-    flex-wrap: wrap;
-}
-
-.shock-banner-title {
-    font-weight: 600;
-    letter-spacing: 0.01em;
-}
-
-.shock-banner-detail {
-    font-size: 0.75rem;
-    color: var(--text-sub);
-    opacity: 0.85;
-}
-
-
-/* Nút đóng */
-
-.shock-banner-dismiss {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--text-dim);
-    font-size: 0.75rem;
-    padding: 2px 6px;
-    border-radius: var(--radius-xs, 5px);
-    flex-shrink: 0;
-    transition: background 0.15s, color 0.15s;
-    line-height: 1;
-}
-
-.shock-banner-dismiss:hover {
-    background: rgba(0, 0, 0, 0.06);
-    color: var(--text-main);
-}
-
-
-/* ================================================================
-   SHOCK CARD BADGE
-   Badge góc trên phải của sensor card khi shock_ph / shock_temp.
-   Hiện ra bằng class .visible, tự tắt sau 30s qua JS.
-   Card cần có position:relative (đã có sẵn trong .card).
-   ================================================================ */
-
-.shock-card-badge {
-    display: none;
-    align-items: center;
-    gap: 3px;
-    position: absolute;
-    top: 9px;
-    right: 9px;
-    background: rgba(217, 119, 6, 0.13);
-    border: 0.5px solid rgba(217, 119, 6, 0.45);
-    border-radius: var(--radius-xs, 5px);
-    padding: 2px 6px 2px 4px;
-    pointer-events: none;
-    z-index: 5;
-    animation: shock-badge-in 0.2s ease;
-}
-
-.shock-card-badge.visible {
-    display: flex;
-}
-
-@keyframes shock-badge-in {
-    from {
-        opacity: 0;
-        transform: scale(0.85);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-.shock-card-badge-icon {
-    font-size: 0.65rem;
-    line-height: 1;
-    animation: shock-badge-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes shock-badge-pulse {
-    0%,
-    100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.35;
-    }
-}
-
-.shock-card-badge-label {
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: var(--accent-warn, #d97706);
-    line-height: 1;
-}
-
-
-/* Card có shock → highlight border nhẹ */
-
-.card.shock-active {
-    border-color: rgba(217, 119, 6, 0.5) !important;
-    transition: border-color 0.3s ease;
-}
-
-
-/* Khi shock tắt → trả border về bình thường mượt */
-
-.card.shock-active-out {
-    border-color: var(--border) !important;
-    transition: border-color 1.5s ease;
-}
-
-
-/* Đảm bảo shock-card-badge (position:absolute) định vị đúng trong card */
-
-.card {
-    position: relative;
-}
-
-
-/* ================================================================
-   SAFETY LOG — SHOCK_GUARD ROW & CHIPS
-   ================================================================ */
-
-
-/* Row nền vàng nhạt cho SHOCK_GUARD */
-
-.safety-log-table tr.log-row-shock {
-    background: rgba(217, 119, 6, 0.05);
-}
-
-.safety-log-table tr.log-row-shock td.event-name {
-    color: var(--accent-warn) !important;
-}
-
-
-/* Chip loại sensor trong cột giá trị */
-
-.log-shock-chip {
-    display: inline-flex;
-    align-items: center;
-    font-size: 0.62rem;
-    font-weight: 600;
-    font-family: 'IBM Plex Mono', monospace;
-    padding: 1px 5px;
-    border-radius: 3px;
-    line-height: 1.5;
-    margin-left: 2px;
-}
-
-.log-shock-chip:first-child {
-    margin-left: 0;
-}
-
-
-/* Chip nhiệt độ */
-
-.log-shock-chip.temp {
-    background: rgba(217, 119, 6, 0.12);
-    color: var(--accent-temp, #d97706);
-    border: 0.5px solid rgba(217, 119, 6, 0.3);
-}
-
-
-/* Chip pH */
-
-.log-shock-chip.ph {
-    background: rgba(13, 148, 136, 0.10);
-    color: var(--accent-ph, #0d9488);
-    border: 0.5px solid rgba(13, 148, 136, 0.25);
-}
-
-
-/* Chip fallback (không có detail field) */
-
-.log-shock-chip.fallback {
-    background: rgba(148, 163, 184, 0.12);
-    color: var(--text-dim, #94a3b8);
-    border: 0.5px solid rgba(148, 163, 184, 0.25);
-}
-
-
-/* ================================================================
-   SOURCE BADGE — trạng thái SHOCK
-   Dùng chung badge-temp-src / badge-ph-src, ưu tiên hiện SHOCK
-   trong 30s, sau đó tự trả về MEAS/FB.
-   ================================================================ */
-
-.source-badge.shock-badge {
-    background: rgba(217, 119, 6, 0.15);
-    color: var(--accent-warn, #d97706);
-    border: 0.5px solid rgba(217, 119, 6, 0.45);
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    animation: shock-badge-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes shock-badge-pulse {
-    0%,
-    100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.45;
-    }
-}
-
-
-/* ================================================================
    STALE BANNER — Firmware không phản hồi
    Tách riêng khỏi .offline-banner, hiện/ẩn độc lập với shock.
    ================================================================ */
@@ -895,17 +616,228 @@ body {
 
 
 /* ================================================================
-   SHOCK BANNER — cập nhật: thêm time chip, bỏ auto-dismiss
+   SHOCK DIALOG OVERLAY
    ================================================================ */
 
+.shock-dialog-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    animation: dialog-fade-in 0.2s ease;
+}
 
-/* Chip thời gian trong shock banner */
+.shock-dialog-overlay.visible {
+    display: flex;
+}
 
-.shock-banner-time {
+@keyframes dialog-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.shock-dialog {
+    background: var(--card-bg, #0f1923);
+    border: 1px solid rgba(217, 119, 6, 0.35);
+    border-radius: var(--radius-md, 14px);
+    padding: 28px 32px 24px;
+    max-width: 360px;
+    width: calc(100% - 32px);
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: dialog-slide-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes dialog-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.shock-dialog-icon {
+    font-size: 2.4rem;
+    margin-bottom: 8px;
+    animation: shock-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes shock-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
+.shock-dialog-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent-warn, #d97706);
+    margin: 0 0 4px;
+    letter-spacing: 0.01em;
+}
+
+.shock-dialog-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin: 0 0 16px;
+}
+
+.shock-dialog-values {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.shock-dialog-val-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.shock-dialog-val-label {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.shock-dialog-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.shock-dialog-val.after {
+    color: var(--accent-err, #f87171);
+}
+
+.shock-dialog-arrow {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    padding-top: 14px;
+}
+
+.shock-dialog-time {
     font-size: 0.7rem;
     font-family: 'IBM Plex Mono', monospace;
     color: var(--text-dim);
-    white-space: nowrap;
+    margin: 0 0 20px;
+}
+
+.shock-dialog-confirm {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.85rem;
+}
+
+
+/* ================================================================
+   SHOCK LOG TABLE
+   ================================================================ */
+
+.shock-log-row {
+    cursor: default;
+    transition: background 0.12s;
+}
+
+.shock-log-row.unread {
+    cursor: pointer;
+}
+
+.shock-log-row.unread:hover {
+    background: rgba(217, 119, 6, 0.06);
+}
+
+.shock-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.03em;
+}
+
+.shock-type-ph {
+    background: rgba(45, 212, 191, 0.12);
+    color: var(--accent-ph, #2dd4bf);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+}
+
+.shock-type-temp {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--accent-warn, #f59e0b);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.shock-delta-down {
+    color: var(--accent-err, #f87171);
+    font-weight: 600;
+}
+
+.shock-delta-up {
+    color: var(--accent-ok, #34d399);
+    font-weight: 600;
+}
+
+.shock-log-hint {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin: 8px 0 0;
+    text-align: center;
+    font-style: italic;
+}
+
+
+/* ================================================================
+   SAFETY LOG — collapsible + unread dot
+   ================================================================ */
+
+.safety-log-collapsible {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+#safety-log-panel.open .safety-log-collapsible {
+    max-height: 400px;
+}
+
+#safety-log-panel .flex {
+    user-select: none;
+}
+
+.safety-unread-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-warn, #f59e0b);
+    margin-left: 4px;
+    vertical-align: middle;
     flex-shrink: 0;
-    opacity: 0.8;
+}
+
+#safety-log-toggle-hint {
+    transition: opacity 0.2s;
 }

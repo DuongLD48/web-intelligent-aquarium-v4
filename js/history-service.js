@@ -21,7 +21,7 @@ import {
 const WINDOW_S = 12 * 60 * 60; // 12 giờ tính bằng giây (RTDB key là Unix giây)
 const CLEANUP_INTERVAL_MS = 30 * 60 * 1000; // dọn dữ liệu mỗi 30 phút (ms)
 
-const HISTORY_PATH = () => `devices/${DEVICE_ID}/history`;
+const HISTORY_PATH = () => `devices/${DEVICE_ID}/history/chart`;
 
 const _listeners = [];
 let _unsubscribe = null;
@@ -122,8 +122,10 @@ export function startPolling() {
     _cleanupOldNodes().catch(e => console.warn('[history] cleanup init error:', e));
 
     return () => {
-        if (_unsubscribe) { _unsubscribe();
-            _unsubscribe = null; }
+        if (_unsubscribe) {
+            _unsubscribe();
+            _unsubscribe = null;
+        }
     };
 }
 

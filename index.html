@@ -61,15 +61,26 @@
             <span class="stale-banner-text">Firmware không phản hồi — không nhận được dữ liệu trong 30 giây</span>
         </div>
 
-        <!-- Shock warning banner (ẩn mặc định, chỉ tắt khi người dùng bấm ✕) -->
-        <div class="shock-banner" id="banner-shock">
-            <span class="shock-banner-icon">⚡</span>
-            <div class="shock-banner-body">
-                <span class="shock-banner-title" id="shock-banner-title">Shock cảm biến phát hiện</span>
-                <span class="shock-banner-detail" id="shock-banner-detail"></span>
+        <!-- Shock Dialog Overlay -->
+        <div class="shock-dialog-overlay" id="shock-dialog-overlay">
+            <div class="shock-dialog">
+                <div class="shock-dialog-icon">⚡</div>
+                <h3 class="shock-dialog-title" id="shock-dialog-title">Shock phát hiện</h3>
+                <p class="shock-dialog-label" id="shock-dialog-label">Giá trị</p>
+                <div class="shock-dialog-values">
+                    <div class="shock-dialog-val-block">
+                        <span class="shock-dialog-val-label">Trước</span>
+                        <span class="shock-dialog-val" id="shock-dialog-before">--</span>
+                    </div>
+                    <div class="shock-dialog-arrow">→</div>
+                    <div class="shock-dialog-val-block">
+                        <span class="shock-dialog-val-label">Sau</span>
+                        <span class="shock-dialog-val after" id="shock-dialog-after">--</span>
+                    </div>
+                </div>
+                <p class="shock-dialog-time" id="shock-dialog-time"></p>
+                <button class="btn btn-primary shock-dialog-confirm" id="shock-dialog-confirm">✓ Đã hiểu</button>
             </div>
-            <span class="shock-banner-time" id="shock-banner-time"></span>
-            <button class="shock-banner-dismiss" id="shock-banner-dismiss" aria-label="Đóng cảnh báo">✕</button>
         </div>
 
         <!-- ── MAIN ─────────────────────────────────────────────────── -->
@@ -299,13 +310,43 @@
                         </div>
                     </div>
 
-                    <!-- SAFETY LOG -->
+                    <!-- SHOCK LOG -->
                     <div class="card">
                         <div class="flex" style="align-items:center; margin-bottom:12px">
-                            <span class="card-title" style="margin:0">Safety Log</span>
-                            <span class="log-count-badge hidden" id="log-count-badge">0</span>
+                            <span class="card-title" style="margin:0">⚡ Shock Log</span>
+                            <span class="log-count-badge hidden" id="shock-log-badge">0</span>
                         </div>
                         <div class="log-scroll">
+                            <table class="safety-log-table" id="shock-log-table">
+                                <thead>
+                                    <tr style="font-size:0.68rem;color:var(--text-dim)">
+                                        <th style="width:12px"></th>
+                                        <th style="text-align:left;padding-bottom:6px">Thời gian</th>
+                                        <th style="text-align:left;padding-bottom:6px">Loại</th>
+                                        <th style="text-align:left;padding-bottom:6px">Thay đổi</th>
+                                        <th style="text-align:left;padding-bottom:6px">Δ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shock-log-body">
+                                    <tr>
+                                        <td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px 0;font-size:0.75rem">
+                                            Chưa có sự kiện shock
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="shock-log-hint">Nhấn vào hàng chưa đọc để xem chi tiết & đánh dấu đã đọc</p>
+                    </div>
+
+                    <!-- SAFETY LOG -->
+                    <div class="card" id="safety-log-panel">
+                        <div class="flex" style="align-items:center; margin-bottom:12px; cursor:pointer" onclick="toggleSafetyLog()">
+                            <span class="card-title" style="margin:0">🛡 Safety Log</span>
+                            <span class="log-count-badge hidden" id="log-count-badge">0</span>
+                            <span style="margin-left:auto;font-size:0.75rem;color:var(--text-dim)" id="safety-log-toggle-hint">▼ nhấn để xem & đánh dấu đã đọc</span>
+                        </div>
+                        <div class="log-scroll safety-log-collapsible" id="safety-log-collapsible">
                             <table class="safety-log-table" id="safety-log-table">
                                 <tbody id="safety-log-body">
                                     <tr>
