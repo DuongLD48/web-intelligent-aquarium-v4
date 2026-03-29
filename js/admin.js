@@ -52,6 +52,12 @@ const DEFAULTS_WATER_SCHEDULE = {
     pump_in_max_sec: 600,
 };
 
+const DEFAULTS_CALIBRATION = {
+    ph_slope: -3.5,
+    ph_offset: 15.5,
+    tds_factor: 1.0,
+};
+
 // ================================================================
 const SAFE_RANGES = {
     temp_range_min: { min: 0, max: 30, label: 'Temp Range Min' },
@@ -82,10 +88,12 @@ let currentPipeline = {};
 let currentSafety = {};
 let currentAnalytics = {};
 let currentWaterSchedule = {};
+let currentCalibration = {};
 let formPipeline = {};
 let formSafety = {};
 let formAnalytics = {};
 let formWaterSchedule = {};
+let formCalibration = {};
 
 // ================================================================
 // FIELD → STATE MAP
@@ -124,6 +132,9 @@ const FIELD_MAP = {
     'inp-pump-min-sec': ['waterSchedule', 'pump_min_sec'],
     'inp-pump-out-max-sec': ['waterSchedule', 'pump_out_max_sec'],
     'inp-pump-in-max-sec': ['waterSchedule', 'pump_in_max_sec'],
+    'inp-ph-calib-slope': ['calibration', 'ph_slope'],
+    'inp-ph-calib-offset': ['calibration', 'ph_offset'],
+    'inp-tds-calib-factor': ['calibration', 'tds_factor'],
 };
 
 // ================================================================
@@ -138,6 +149,7 @@ const FIELD_MAP = {
     listenRef('settings/safety_limits', onSafetySnap);
     listenRef('settings/analytics_config', onAnalyticsSnap);
     listenRef('settings/water_schedule', onWaterScheduleSnap);
+    listenRef('settings/calibration', onCalibrationSnap);
     listenRef('status', function(snap) {
         if (!snap.exists()) return;
         document.getElementById('dot-online').className = 'status-dot online';
@@ -200,6 +212,16 @@ function onWaterScheduleSnap(snap) {
     checkSafetyAlerts();
 }
 
+function onCalibrationSnap(snap) {
+    var d = snap.exists() ? snap.val() : {};
+    currentCalibration = Object.assign({}, DEFAULTS_CALIBRATION, d);
+    formCalibration = Object.assign({}, currentCalibration);
+    populateCalibrationFields();
+    updateDirtyState();
+    updateFieldHighlights();
+    checkSafetyAlerts();
+}
+
 // ================================================================
 // POPULATE FIELDS
 // ================================================================
@@ -251,6 +273,14 @@ function populateAnalyticsFields() {
     setVal('inp-ac-fsi-alpha', currentAnalytics.fsi_alpha);
     setVal('inp-ac-fsi-beta', currentAnalytics.fsi_beta);
     setVal('inp-ac-fsi-shock-penalty', currentAnalytics.fsi_shock_penalty);
+}
+
+function populateCalibrationFields() {
+    setVal('inp-ph-calib-slope', currentCalibration.ph_slope);
+    setVal('inp-ph-calib-offset', currentCalibration.ph_offset);
+    setVal('inp-tds-calib-factor', currentCalibration.tds_factor);
+    updatePhCalibPreview();
+    updateTdsCalibPreview();
 }
 
 // ================================================================
@@ -338,6 +368,11 @@ function syncForm() {
     formWaterSchedule.pump_min_sec = parseInt(getVal('inp-pump-min-sec'));
     formWaterSchedule.pump_out_max_sec = parseInt(getVal('inp-pump-out-max-sec'));
     formWaterSchedule.pump_in_max_sec = parseInt(getVal('inp-pump-in-max-sec'));
+
+    // Calibration
+    formCalibration.ph_slope = parseFloat(getVal('inp-ph-calib-slope'));
+    formCalibration.ph_offset = parseFloat(getVal('inp-ph-calib-offset'));
+    formCalibration.tds_factor = parseFloat(getVal('inp-tds-calib-factor'));
 }
 
 // ================================================================
@@ -351,6 +386,8 @@ function attachInputListeners() {
             syncForm();
             updateMsHints();
             updatePumpSecHints();
+            updatePhCalibPreview();
+            updateTdsCalibPreview();
             updateDirtyState();
             updateFieldHighlights();
             checkSafetyAlerts();
@@ -373,8 +410,8 @@ function updateFieldHighlights() {
         var key = entry[1][1];
         var el = document.getElementById(id);
         if (!el) return;
-        var current = src === 'pipeline' ? currentPipeline : src === 'analytics' ? currentAnalytics : src === 'waterSchedule' ? currentWaterSchedule : currentSafety;
-        var form = src === 'pipeline' ? formPipeline : src === 'analytics' ? formAnalytics : src === 'waterSchedule' ? formWaterSchedule : formSafety;
+        var current = src === 'pipeline' ? currentPipeline : src === 'analytics' ? currentAnalytics : src === 'waterSchedule' ? currentWaterSchedule : src === 'calibration' ? currentCalibration : currentSafety;
+        var form = src === 'pipeline' ? formPipeline : src === 'analytics' ? formAnalytics : src === 'waterSchedule' ? formWaterSchedule : src === 'calibration' ? formCalibration : formSafety;
         el.classList.toggle('field-changed',
             form[key] !== undefined && form[key] !== current[key]);
     });
@@ -439,6 +476,34 @@ function checkSafetyAlerts() {
         if (_aa2) _aa2.classList.remove('field-danger');
     }
 
+    // Calibration: ph_slope must not be 0
+    var phSlope = parseFloat(getVal('inp-ph-calib-slope'));
+    var errPhCalib = document.getElementById('err-ph-calib');
+    if (!isNaN(phSlope) && phSlope === 0) {
+        alerts.push('⚠ pH Slope không được bằng 0');
+        var _sl = document.getElementById('inp-ph-calib-slope');
+        if (_sl) _sl.classList.add('field-danger');
+        if (errPhCalib) errPhCalib.style.display = 'block';
+    } else {
+        var _sl2 = document.getElementById('inp-ph-calib-slope');
+        if (_sl2) _sl2.classList.remove('field-danger');
+        if (errPhCalib) errPhCalib.style.display = 'none';
+    }
+
+    // Calibration: tds_factor must be > 0
+    var tdsFactor = parseFloat(getVal('inp-tds-calib-factor'));
+    var errTdsCalib = document.getElementById('err-tds-calib');
+    if (!isNaN(tdsFactor) && tdsFactor <= 0) {
+        alerts.push('⚠ TDS Factor phải lớn hơn 0');
+        var _tf = document.getElementById('inp-tds-calib-factor');
+        if (_tf) _tf.classList.add('field-danger');
+        if (errTdsCalib) errTdsCalib.style.display = 'block';
+    } else {
+        var _tf2 = document.getElementById('inp-tds-calib-factor');
+        if (_tf2) _tf2.classList.remove('field-danger');
+        if (errTdsCalib) errTdsCalib.style.display = 'none';
+    }
+
     // SAFE_RANGES checks
     [
         ['thermal_cutoff_c', parseFloat(getVal('inp-thermal-cutoff'))],
@@ -478,7 +543,8 @@ function isDirty() {
     return JSON.stringify(formPipeline) !== JSON.stringify(currentPipeline) ||
         JSON.stringify(formSafety) !== JSON.stringify(currentSafety) ||
         JSON.stringify(formAnalytics) !== JSON.stringify(currentAnalytics) ||
-        JSON.stringify(formWaterSchedule) !== JSON.stringify(currentWaterSchedule);
+        JSON.stringify(formWaterSchedule) !== JSON.stringify(currentWaterSchedule) ||
+        JSON.stringify(formCalibration) !== JSON.stringify(currentCalibration);
 }
 
 function countDirtyFields() {
@@ -494,6 +560,9 @@ function countDirtyFields() {
     });
     Object.keys(currentWaterSchedule).forEach(function(k) {
         if (formWaterSchedule[k] !== currentWaterSchedule[k]) n++;
+    });
+    Object.keys(currentCalibration).forEach(function(k) {
+        if (formCalibration[k] !== currentCalibration[k]) n++;
     });
     return n;
 }
@@ -532,6 +601,16 @@ window.saveAll = function() {
         return;
     }
 
+    // Calibration guards
+    if (isNaN(formCalibration.ph_slope) || formCalibration.ph_slope === 0) {
+        showToast('pH Slope không hợp lệ (không được bằng 0)', 'error');
+        return;
+    }
+    if (isNaN(formCalibration.tds_factor) || formCalibration.tds_factor <= 0) {
+        showToast('TDS Factor không hợp lệ (phải > 0)', 'error');
+        return;
+    }
+
     var banner = document.getElementById('safety-alert-banner');
     if (banner && banner.classList.contains('visible')) {
         if (!confirm('⚠ Một số giá trị nằm ngoài vùng khuyến nghị. Vẫn muốn lưu?')) return;
@@ -552,10 +631,14 @@ window.saveAll = function() {
             return updateRef('settings/water_schedule', formWaterSchedule);
         })
         .then(function() {
+            return updateRef('settings/calibration', formCalibration);
+        })
+        .then(function() {
             currentPipeline = Object.assign({}, formPipeline);
             currentSafety = Object.assign({}, formSafety);
             currentAnalytics = Object.assign({}, formAnalytics);
             currentWaterSchedule = Object.assign({}, formWaterSchedule);
+            currentCalibration = Object.assign({}, formCalibration);
             updateDirtyState();
             updateFieldHighlights();
             showToast('Đã lưu thành công ✓', 'success');
@@ -578,10 +661,12 @@ window.revertChanges = function() {
     formSafety = Object.assign({}, currentSafety);
     formAnalytics = Object.assign({}, currentAnalytics);
     formWaterSchedule = Object.assign({}, currentWaterSchedule);
+    formCalibration = Object.assign({}, currentCalibration);
     populatePipelineFields();
     populateSafetyFields();
     populateAnalyticsFields();
     populateWaterScheduleFields();
+    populateCalibrationFields();
     updateDirtyState();
     updateFieldHighlights();
     checkSafetyAlerts();
@@ -627,6 +712,9 @@ window.confirmReset = function() {
             return updateRef('settings/water_schedule', DEFAULTS_WATER_SCHEDULE);
         })
         .then(function() {
+            return updateRef('settings/calibration', DEFAULTS_CALIBRATION);
+        })
+        .then(function() {
             showToast('Đã khôi phục mặc định Admin ✓', 'success');
         })
         .catch(function(err) {
@@ -661,4 +749,55 @@ function getVal(id) {
 function setVal(id, val) {
     var el = document.getElementById(id);
     if (el && val !== undefined && val !== null) el.value = val;
+}
+
+// ================================================================
+// CALIBRATION PREVIEWS
+// ================================================================
+
+// pH preview: pH = slope × voltage + offset
+window.updatePhCalibPreview = function() {
+    var slope = parseFloat(getVal('inp-ph-calib-slope'));
+    var offset = parseFloat(getVal('inp-ph-calib-offset'));
+    var testV = parseFloat(getVal('inp-ph-calib-test-v'));
+    var el = document.getElementById('prev-ph-calib');
+    if (!el) return;
+
+    if (isNaN(slope) || isNaN(offset)) {
+        el.textContent = '→ --';
+        el.style.color = '';
+        return;
+    }
+
+    if (!isNaN(testV)) {
+        var pH = slope * testV + offset;
+        var ok = pH >= 0 && pH <= 14;
+        el.textContent = '→ pH ' + pH.toFixed(2) + (ok ? '' : '  ⚠ ngoài 0–14');
+        el.style.color = ok ? 'var(--accent-ok)' : 'var(--accent-err)';
+    } else {
+        // Tính pH tại 2 điểm chuẩn phổ biến để preview nhanh
+        var pH4V = (4 - offset) / slope; // voltage tương ứng pH 4
+        var pH7V = (7 - offset) / slope; // voltage tương ứng pH 7
+        var pH10V = (10 - offset) / slope; // voltage tương ứng pH 10
+        el.textContent = '→ pH4 ≈ ' + pH4V.toFixed(3) + 'V  |  pH7 ≈ ' + pH7V.toFixed(3) + 'V  |  pH10 ≈ ' + pH10V.toFixed(3) + 'V';
+        el.style.color = 'var(--text-sub)';
+    }
+};
+
+// TDS factor preview
+function updateTdsCalibPreview() {
+    var factor = parseFloat(getVal('inp-tds-calib-factor'));
+    var el = document.getElementById('prev-tds-calib');
+    if (!el) return;
+
+    if (isNaN(factor) || factor <= 0) {
+        el.textContent = '→ --';
+        el.style.color = '';
+        return;
+    }
+
+    var pct = ((factor - 1) * 100).toFixed(1);
+    var dir = factor > 1 ? '+' : '';
+    el.textContent = '→ đầu ra × ' + factor.toFixed(2) + '  (' + dir + pct + '%)';
+    el.style.color = factor === 1.0 ? 'var(--text-sub)' : 'var(--accent-warn, #fbbf24)';
 }

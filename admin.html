@@ -474,7 +474,73 @@
                 </div>
 
                 <!-- ══════════════════════════════════════════════ -->
-                <!-- SECTION B — SAFETY CONFIG                     -->
+                <!-- SECTION B — SENSOR CALIBRATION               -->
+                <!-- ══════════════════════════════════════════════ -->
+                <div class="section-divider">
+                    <div class="section-divider-line"></div>
+                    <span class="section-divider-label">Calibration — Hiệu chuẩn cảm biến</span>
+                    <div class="section-divider-line"></div>
+                </div>
+
+                <!-- B1 — pH Calibration -->
+                <div class="settings-card pipeline-card">
+                    <div class="settings-card-title pipeline">⚗ Hiệu chuẩn pH</div>
+                    <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
+                        Công thức: <code style="font-family:monospace;font-size:0.7rem;color:var(--accent-pipeline)">pH = slope × voltage + offset</code>. Dùng dung dịch chuẩn (buffer 4.0, 7.0) để đo voltage → tính slope &amp; offset trước khi nhập.
+                    </div>
+
+                    <div class="input-row-2">
+                        <div class="form-group">
+                            <label class="form-label">pH Slope</label>
+                            <input class="form-input" type="number" id="inp-ph-calib-slope" step="0.001">
+                            <span class="param-desc">Hệ số góc (thường âm, VD: −3.5)</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">pH Offset</label>
+                            <input class="form-input" type="number" id="inp-ph-calib-offset" step="0.001">
+                            <span class="param-desc">Hệ số bù (VD: 15.5)</span>
+                        </div>
+                    </div>
+
+                    <!-- Live preview: voltage → pH -->
+                    <div style="margin-top:12px">
+                        <label class="form-label" style="font-size:0.68rem">Kiểm tra nhanh — nhập voltage đo được (V):</label>
+                        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+                            <input class="form-input" type="number" id="inp-ph-calib-test-v" step="0.001" min="0" max="3.3" placeholder="VD: 2.1" style="max-width:120px" oninput="updatePhCalibPreview()">
+                            <span class="form-preview" id="prev-ph-calib" style="margin:0">→ --</span>
+                        </div>
+                    </div>
+
+                    <span class="form-error" id="err-ph-calib" style="display:none">
+                        Slope không được bằng 0
+                    </span>
+                </div>
+
+                <!-- B2 — TDS Calibration -->
+                <div class="settings-card pipeline-card">
+                    <div class="settings-card-title pipeline">💎 Hiệu chuẩn TDS</div>
+                    <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
+                        Hệ số nhân <code style="font-family:monospace;font-size:0.7rem;color:var(--accent-pipeline)">TDS_CALIB_FACTOR</code> áp dụng sau công thức polynomial chuẩn. Đo bằng TDS meter chuẩn, sau đó điều chỉnh factor cho đến khi khớp.
+                    </div>
+
+                    <div class="input-row-2">
+                        <div class="form-group">
+                            <label class="form-label">TDS Factor</label>
+                            <input class="form-input" type="number" id="inp-tds-calib-factor" step="0.01" min="0.1" max="5.0">
+                            <span class="param-desc">Hệ số nhân đầu ra (mặc định: 1.0)</span>
+                        </div>
+                        <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end">
+                            <div class="form-preview" id="prev-tds-calib">→ --</div>
+                        </div>
+                    </div>
+
+                    <span class="form-error" id="err-tds-calib" style="display:none">
+                        Factor phải > 0
+                    </span>
+                </div>
+
+                <!-- ══════════════════════════════════════════════ -->
+                <!-- SECTION C — SAFETY CONFIG                     -->
                 <!-- ══════════════════════════════════════════════ -->
                 <div class="section-divider">
                     <div class="section-divider-line"></div>
