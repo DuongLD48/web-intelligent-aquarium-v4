@@ -1,7 +1,6 @@
 // ================================================================
-// dashboard.js — Intelligent Aquarium v7.1
-// Fix: field names khớp Firebase JSON
-//      + fb_ph / fb_tds / fb_temp > 12 → sensor error UI
+// dashboard.js — Intelligent Aquarium v7.2
+// Fix: pH đọc từ ph_session/last_median_ph thay vì telemetry
 // ================================================================
 
 import { listenRef, setRef, updateRef, readOnce, onConnectionChange, requireAuth, doLogout } from './firebase-init.js';
@@ -75,11 +74,6 @@ function fmtUptime(sec) {
 // ================================================================
 const SENSOR_ERROR_THRESHOLD = 12;
 
-/**
- * Kiểm tra và cập nhật UI cảnh báo lỗi sensor dựa trên fb_* counter.
- * fb_temp / fb_ph / fb_tds: số lần liên tiếp phải dùng fallback.
- * Nếu > 12 → sensor bị hư → hiện lỗi đỏ.
- */
 function updateSensorErrorState(sensor, fbCount) {
     const isBroken = typeof fbCount === 'number' && fbCount > SENSOR_ERROR_THRESHOLD;
 
@@ -96,61 +90,37 @@ function updateSensorErrorState(sensor, fbCount) {
     const badge = document.getElementById(badgeMap[sensor]);
 
     if (isBroken) {
-        // Đặt class lỗi cho card
         if (card) card.classList.add('sensor-broken');
-
-        // Giá trị hiển thị lỗi
         if (valEl) valEl.textContent = 'ERR';
-
-        // Arc chuyển đỏ, offset = full (không hiện)
         if (arcEl) {
             arcEl.style.stroke = 'var(--accent-err)';
-            arcEl.style.strokeDashoffset = (sensor === 'temp' || sensor === 'ph' || sensor === 'tds') ?
-                GAUGE_CIRC_LG.toString() :
-                GAUGE_CIRC_LG.toString();
+            arcEl.style.strokeDashoffset = GAUGE_CIRC_LG.toString();
         }
-
-        // Status dot
         if (dotEl) dotEl.className = 'status-dot error';
-
-        // Badge
         if (badge) {
-            badge.textContent = 'HƯ';
+            badge.textContent = 'LỖI';
             badge.className = 'source-badge error-badge';
         }
-
-        // Hiện overlay cảnh báo trong card nếu chưa có
         if (card && !card.querySelector('.sensor-broken-overlay')) {
             const overlay = document.createElement('div');
             overlay.className = 'sensor-broken-overlay';
             overlay.innerHTML =
                 '<span class="broken-icon">⚠</span>' +
-                '<span class="broken-title">Sensor lỗi</span>' +
-                '<span class="broken-sub">Fallback liên tiếp: <strong>' + fbCount + '</strong> lần</span>' +
-                '<span class="broken-hint">Kiểm tra kết nối sensor</span>';
+                '<span class="broken-title">Lỗi sensor</span>' +
+                '<span class="broken-sub">Kiểm tra lại kết nối sensor</span>' +
+                '<span class="broken-hint">Hệ thống đang dùng giá trị dự phòng</span>';
             card.appendChild(overlay);
-        } else if (card) {
-            // Cập nhật số lần nếu overlay đã có
-            const sub = card.querySelector('.broken-sub');
-            if (sub) sub.innerHTML = 'Fallback liên tiếp: <strong>' + fbCount + '</strong> lần';
         }
     } else {
-        // Xoá trạng thái lỗi
         if (card) card.classList.remove('sensor-broken');
         const _ov = card && card.querySelector('.sensor-broken-overlay');
         if (_ov) _ov.remove();
-
-        // Reset arc màu về mặc định
         if (arcEl) {
             const colorMap = { temp: '#f59e0b', ph: '#2dd4bf', tds: '#a78bfa' };
             arcEl.style.stroke = colorMap[sensor] || '';
             arcEl.style.strokeDashoffset = '';
         }
-
-        // Reset status dot về ok
         if (dotEl) dotEl.className = 'status-dot ok';
-
-        // Reset badge về MEAS (sẽ được cập nhật đúng ở lần telemetry tiếp theo)
         if (badge) {
             badge.textContent = 'MEAS';
             badge.className = 'source-badge measured';
@@ -173,12 +143,10 @@ function updateStatus(snap) {
 
     const banner = document.getElementById('banner-safe-mode');
     banner.classList.toggle('visible', !!d.safe_mode);
-
-    // Safety log giờ đọc từ Firebase history/last_safety_event (realtime)
 }
 
 // ================================================================
-// TELEMETRY
+// TELEMETRY — chỉ Temp + TDS, pH đã chuyển sang ph_session
 // ================================================================
 let gaugeRanges = {
     temp: { min: 15, max: 40 },
@@ -189,44 +157,35 @@ let gaugeRanges = {
 const STATUS_DOT_CLASS = {
     OK: 'ok',
     MAD_OUTLIER: 'warn',
-    OUT_OF_RANGE: 'warn', // warn (không hẳn lỗi phần cứng)
+    OUT_OF_RANGE: 'warn',
     SENSOR_ERROR: 'error',
     FALLBACK_DEFAULT: 'warn',
     FALLBACK_LAST: 'warn',
 };
 
-
-// ================================================================
-// FIRMWARE STALENESS DETECTOR
-// Nếu telemetry không thay đổi trong 30s -> báo firmware offline
-// ================================================================
+// ── Firmware staleness ───────────────────────────────────────────
 var _lastTelemetryHash = null;
 var _lastTelemetryTime = Date.now();
 var _firmwareOnline = true;
-var STALE_TIMEOUT_MS = 30000; // 30 giây
+var STALE_TIMEOUT_MS = 30000;
 
 function hashTelemetry(d) {
-    // Dùng timestamp + các giá trị cảm biến làm fingerprint
-    return (d.timestamp || 0) + '|' + (d.temperature || 0) + '|' + (d.ph || 0) + '|' + (d.tds || 0);
+    return (d.timestamp || 0) + '|' + (d.temperature || 0) + '|' + (d.tds || 0);
 }
 
 function setFirmwareOnline(online) {
-    if (online === _firmwareOnline) return; // không thay đổi -> bỏ qua
+    if (online === _firmwareOnline) return;
     _firmwareOnline = online;
-
     var dot = document.getElementById('dot-online');
     var txt = document.getElementById('txt-online');
-
     if (online) {
         if (dot) dot.className = 'status-dot online';
         if (txt) txt.textContent = 'Online';
-        // Ẩn banner stale nếu có
         var b = document.getElementById('banner-stale');
         if (b) b.classList.remove('visible');
     } else {
         if (dot) dot.className = 'status-dot offline';
         if (txt) txt.textContent = 'Firmware offline';
-        // Hiện banner stale
         var b2 = document.getElementById('banner-stale');
         if (b2) b2.classList.add('visible');
     }
@@ -234,18 +193,17 @@ function setFirmwareOnline(online) {
 
 function startStalenessWatcher() {
     setInterval(function() {
-        var elapsed = Date.now() - _lastTelemetryTime;
-        if (elapsed >= STALE_TIMEOUT_MS) {
+        if (Date.now() - _lastTelemetryTime >= STALE_TIMEOUT_MS) {
             setFirmwareOnline(false);
         }
-    }, 5000); // kiểm tra mỗi 5s
+    }, 5000);
 }
 
 function updateTelemetry(snap) {
     if (!snap.exists()) return;
     const d = snap.val();
 
-    // Staleness check: cập nhật thời gian nhận data mới nhất
+    // Staleness check
     var hash = hashTelemetry(d);
     if (hash !== _lastTelemetryHash) {
         _lastTelemetryHash = hash;
@@ -253,13 +211,11 @@ function updateTelemetry(snap) {
         setFirmwareOnline(true);
     }
 
-    // ── fb_* counters → kiểm tra lỗi sensor TRƯỚC ──────────────
+    // ── Sensor error state — chỉ temp + tds ─────────────────────
     const tempBroken = updateSensorErrorState('temp', d.fb_temp);
-    const phBroken = updateSensorErrorState('ph', d.fb_ph);
     const tdsBroken = updateSensorErrorState('tds', d.fb_tds);
 
     // ── Nhiệt độ ─────────────────────────────────────────────────
-    // Firebase field: "temperature", source: "temp_source", status: "temp_status"
     if (d.temperature !== undefined && !tempBroken) {
         document.getElementById('val-temp').textContent =
             parseFloat(d.temperature).toFixed(1);
@@ -269,19 +225,7 @@ function updateTelemetry(snap) {
         if (d.shock_temp) shockFlash('card-temp');
     }
 
-    // ── pH ───────────────────────────────────────────────────────
-    // Firebase field: "ph", source: "ph_source", status: "ph_status"
-    if (d.ph !== undefined && !phBroken) {
-        document.getElementById('val-ph').textContent =
-            parseFloat(d.ph).toFixed(2);
-        updateArc('arc-ph', d.ph, gaugeRanges.ph.min, gaugeRanges.ph.max);
-        setStatusDot('dot-ph', d.ph_status);
-        setSourceBadge('badge-ph-src', d.ph_source);
-        if (d.shock_ph) shockFlash('card-ph');
-    }
-
     // ── TDS ──────────────────────────────────────────────────────
-    // Firebase field: "tds", source: "tds_source", status: "tds_status"
     if (d.tds !== undefined && !tdsBroken) {
         document.getElementById('val-tds').textContent =
             Math.round(d.tds).toString();
@@ -290,13 +234,102 @@ function updateTelemetry(snap) {
         setSourceBadge('badge-tds-src', d.tds_source);
     }
 
-    // Shock events giờ được xử lý qua Firebase history/shock_event_ph|temp
+    // pH không đọc từ telemetry nữa — xem updatePhSession()
 }
 
+// ================================================================
+// PH SESSION — nguồn dữ liệu pH duy nhất
+// ================================================================
+function updatePhSession(snap) {
+    if (!snap.exists()) return;
+    const d = snap.val();
+
+    const ph = d.last_median_ph;
+    if (ph === undefined || ph === null) return;
+
+    // Session thành công → xóa broken state nếu đang hiển thị
+    if (_phSensorBroken) _clearPhSensorBroken();
+
+    // Không cập nhật nếu card đang ở trạng thái sensor broken
+    const card = document.getElementById('card-ph');
+    if (card && card.classList.contains('sensor-broken')) return;
+
+    document.getElementById('val-ph').textContent = parseFloat(ph).toFixed(2);
+    updateArc('arc-ph', ph, gaugeRanges.ph.min, gaugeRanges.ph.max);
+
+    // Status dot — ok nếu có giá trị hợp lệ
+    const dotEl = document.getElementById('dot-ph');
+    if (dotEl) dotEl.className = 'status-dot ok';
+
+    // Badge — hiện trạng thái session
+    const badge = document.getElementById('badge-ph-src');
+    if (badge && !badge.classList.contains('shock-badge') && !badge.classList.contains('error-badge')) {
+        const state = (d.state || 'IDLE');
+        const isMeasuring = (state === 'COLLECTING' || state === 'SAFE_MODE_WAIT');
+        badge.textContent = isMeasuring ? 'ĐO...' : 'MEAS';
+        badge.className = 'source-badge ' + (isMeasuring ? 'fallback' : 'measured');
+    }
+}
+
+// ================================================================
+// PH SENSOR ERROR — từ ph_session/sensor_error (NOISY detection)
+// Set broken khi NOISY, reset khi updatePhSession nhận giá trị mới
+// ================================================================
+var _phSensorBroken = false;
+const PH_SENSOR_ERROR_PATH = () => `devices/${DEVICE_ID}/ph_session/sensor_error`;
+
+function _showPhSensorBroken() {
+    _phSensorBroken = true;
+    var card = document.getElementById('card-ph');
+    if (!card) return;
+    card.classList.add('sensor-broken');
+
+    var existing = card.querySelector('.sensor-broken-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.className = 'sensor-broken-overlay';
+    overlay.innerHTML =
+        '<span class="broken-icon">⚠</span>' +
+        '<span class="broken-title">Lỗi sensor pH</span>' +
+        '<span class="broken-sub">Kiểm tra lại kết nối sensor</span>' +
+        '<span class="broken-hint">Hệ thống sẽ thử lại lần đo tiếp theo</span>';
+    card.appendChild(overlay);
+
+    var badge = document.getElementById('badge-ph-src');
+    if (badge) { badge.textContent = 'LỖI';
+        badge.className = 'source-badge error-badge'; }
+    var dot = document.getElementById('dot-ph');
+    if (dot) dot.className = 'status-dot error';
+}
+
+function _clearPhSensorBroken() {
+    _phSensorBroken = false;
+    var card = document.getElementById('card-ph');
+    if (!card) return;
+    card.classList.remove('sensor-broken');
+    var ov = card.querySelector('.sensor-broken-overlay');
+    if (ov) ov.remove();
+}
+
+function _initPhSensorErrorListener() {
+    var q = fbQuery(fbRef(db, PH_SENSOR_ERROR_PATH()), orderByKey());
+    var _seenKeys = new Set();
+    onChildAdded(q, function(child) {
+        var isNew = !_seenKeys.has(child.key);
+        _seenKeys.add(child.key);
+        if (isNew && !child.val().is_read) {
+            _showPhSensorBroken();
+        }
+    });
+}
+
+// ================================================================
+// BADGE / DOT HELPERS
+// ================================================================
 function setStatusDot(dotId, status) {
     const el = document.getElementById(dotId);
     if (!el || !status) return;
-    // Nếu card đang ở trạng thái broken, không override
     const card = el.closest('.card');
     if (card && card.classList.contains('sensor-broken')) return;
     const cls = STATUS_DOT_CLASS[status] || 'warn';
@@ -306,82 +339,61 @@ function setStatusDot(dotId, status) {
 function setSourceBadge(badgeId, source) {
     const el = document.getElementById(badgeId);
     if (!el || !source) return;
-    if (el.classList.contains('error-badge')) return; // đang hiện "HƯ"
-    if (el.classList.contains('shock-badge')) return; // đang hiện "SHOCK" — không override
+    if (el.classList.contains('error-badge')) return;
+    if (el.classList.contains('shock-badge')) return;
     const isMeas = source === 'MEASURED';
     el.textContent = isMeas ? 'MEAS' : 'FB';
     el.className = 'source-badge ' + (isMeas ? 'measured' : 'fallback');
 }
 
-// Map sensorKey → { timer, lastSource } để restore badge sau shock
+// ================================================================
+// SHOCK FLASH
+// ================================================================
 var _shockBadgeTimers = {};
-
-/**
- * Chiếm badge source (badge-temp-src / badge-ph-src) để hiện SHOCK.
- * Sau 30s tự trả lại giá trị MEAS/FB trước đó.
- * Gọi lại trước khi hết giờ sẽ reset timer.
- */
 var SHOCK_CARD_BADGE_TTL_MS = 30000;
 
 function shockFlash(cardId) {
-    var sensorKey = cardId.replace('card-', ''); // 'card-temp' → 'temp', 'card-ph' → 'ph'
+    var sensorKey = cardId.replace('card-', '');
     var badgeId = 'badge-' + sensorKey + '-src';
-
     var card = document.getElementById(cardId);
     var badge = document.getElementById(badgeId);
     if (!card || !badge) return;
 
-    // Ghi nhớ giá trị badge hiện tại để restore sau
-    if (!_shockBadgeTimers[sensorKey]) {
-        _shockBadgeTimers[sensorKey] = {};
-    }
-    // Chỉ lưu lastSource nếu chưa trong trạng thái shock (tránh ghi đè bằng 'SHOCK')
+    if (!_shockBadgeTimers[sensorKey]) _shockBadgeTimers[sensorKey] = {};
     if (!badge.classList.contains('shock-badge')) {
         _shockBadgeTimers[sensorKey].lastText = badge.textContent;
         _shockBadgeTimers[sensorKey].lastClass = badge.className;
     }
 
-    // Highlight border card
     card.classList.remove('shock-active-out');
     card.classList.add('shock-active');
-
-    // Chiếm badge → hiện SHOCK
     badge.textContent = '⚡ SHOCK';
     badge.className = 'source-badge shock-badge';
 
-    // Reset timer nếu đang chạy
-    if (_shockBadgeTimers[sensorKey].timer) {
+    if (_shockBadgeTimers[sensorKey].timer)
         clearTimeout(_shockBadgeTimers[sensorKey].timer);
-    }
 
-    // Sau 30s: restore badge + trả border về bình thường
     _shockBadgeTimers[sensorKey].timer = setTimeout(function() {
-        // Restore badge về MEAS/FB
         var saved = _shockBadgeTimers[sensorKey];
         if (badge && saved.lastText) {
             badge.textContent = saved.lastText;
             badge.className = saved.lastClass || 'source-badge measured';
         }
-        // Trả border về bình thường
         card.classList.remove('shock-active');
         card.classList.add('shock-active-out');
         setTimeout(function() { card.classList.remove('shock-active-out'); }, 1500);
-
         delete _shockBadgeTimers[sensorKey];
     }, SHOCK_CARD_BADGE_TTL_MS);
 }
 
 // ================================================================
 // SHOCK DIALOG + SHOCK LOG
-// Dialog popup cho event mới nhất chưa đọc.
-// Log bảng gộp pH + Temp, click row để mark read.
 // ================================================================
-
 const SHOCK_PH_PATH = () => `devices/${DEVICE_ID}/history/shock_event_ph`;
 const SHOCK_TEMP_PATH = () => `devices/${DEVICE_ID}/history/shock_event_temp`;
 const SAFETY_FB_PATH = () => `devices/${DEVICE_ID}/history/last_safety_event`;
 
-var _shockEntries = []; // { key, type:'ph'|'temp', before, after, tsMs, is_read }
+var _shockEntries = [];
 var _shockDialogReady = false;
 var _shockDialogCurrentKey = null;
 var _shockDialogCurrentType = null;
@@ -435,7 +447,6 @@ function _onShockDialogConfirm() {
     if (_shockDialogCurrentKey && _shockDialogCurrentType) {
         var basePath = (_shockDialogCurrentType === 'ph' ? SHOCK_PH_PATH() : SHOCK_TEMP_PATH()) +
             '/' + _shockDialogCurrentKey + '/is_read';
-        // Tách bỏ prefix devices/DEVICE_ID/ để dùng setRef
         var relPath = basePath.replace('devices/' + DEVICE_ID + '/', '');
         setRef(relPath, true).catch(e => console.warn('[shock] mark read failed:', e));
 
@@ -450,7 +461,6 @@ function _onShockDialogConfirm() {
     _shockDialogCurrentType = null;
 }
 
-// ── Load lịch sử ────────────────────────────────────────────────
 async function _loadShockEvents() {
     await Promise.all([_loadShockType('ph'), _loadShockType('temp')]);
     _shockEntries.sort(function(a, b) { return b.tsMs - a.tsMs; });
@@ -482,7 +492,6 @@ function _upsertShockEntry(key, type, v) {
     else _shockEntries.push(entry);
 }
 
-// ── Realtime ────────────────────────────────────────────────────
 function _startShockRealtime() {
     _startShockRealtimeType('ph');
     _startShockRealtimeType('temp');
@@ -500,7 +509,9 @@ function _startShockRealtimeType(type) {
         _renderShockLog();
         _updateShockBadge();
         if (isNew && !child.val().is_read) {
-            var entry = _shockEntries.find(function(e) { return e.key === child.key && e.type === type; });
+            var entry = _shockEntries.find(function(e) {
+                return e.key === child.key && e.type === type;
+            });
             if (entry) _showShockDialog(entry.key, entry.type, entry.before, entry.after, entry.tsMs);
         }
     });
@@ -509,12 +520,10 @@ function _startShockRealtimeType(type) {
 function _checkShowShockDialog() {
     if (_shockEntries.length === 0) return;
     var newest = _shockEntries[0];
-    if (!newest.is_read) {
+    if (!newest.is_read)
         _showShockDialog(newest.key, newest.type, newest.before, newest.after, newest.tsMs);
-    }
 }
 
-// ── Render shock log ────────────────────────────────────────────
 function _renderShockLog() {
     var tbody = document.getElementById('shock-log-body');
     if (!tbody) return;
@@ -553,9 +562,8 @@ function _renderShockLog() {
             var key = row.dataset.key;
             var type = row.dataset.type;
             var entry = _shockEntries.find(function(e) { return e.key === key && e.type === type; });
-            if (entry && !entry.is_read) {
+            if (entry && !entry.is_read)
                 _showShockDialog(entry.key, entry.type, entry.before, entry.after, entry.tsMs);
-            }
         });
     });
 }
@@ -664,18 +672,17 @@ function updateWaterChange(snap) {
         stopProgressTimer();
     }
 
-    // Ưu tiên last_run_ts (Unix timestamp thực từ NTP)
-    // Fallback về last_run (số ngày) nếu chưa có
     var rawTs = (d.last_run_ts && d.last_run_ts > 0) ? d.last_run_ts : null;
     var rawDay = (d.last_run && d.last_run > 0) ? d.last_run : null;
 
     if (rawTs) {
-        var ts = rawTs * 1000;
-        document.getElementById('wc-last-run').textContent = 'Lần cuối: ' + toVnDate(ts);
+        document.getElementById('wc-last-run').textContent =
+            'Lần cuối: ' + toVnDate(rawTs * 1000);
     } else if (rawDay) {
         var ts2 = rawDay > 1000000000 ? rawDay * 1000 : rawDay * 86400 * 1000;
         var isUnixSec = rawDay > 1000000000;
-        document.getElementById('wc-last-run').textContent = 'Lần cuối: ' + (isUnixSec ? toVnDate(ts2) : toVnDateOnly(ts2));
+        document.getElementById('wc-last-run').textContent =
+            'Lần cuối: ' + (isUnixSec ? toVnDate(ts2) : toVnDateOnly(ts2));
     }
 }
 
@@ -767,7 +774,6 @@ function updateAnalytics(snap) {
     }
 
     setDrift('drift-temp', d.drift_temp);
-    setDrift('drift-ph', d.drift_ph);
     setDrift('drift-tds', d.drift_tds);
 }
 
@@ -780,12 +786,10 @@ function setDrift(elId, val) {
 }
 
 // ================================================================
-// SAFETY LOG — đọc từ Firebase history/last_safety_event
-// is_read: false → chưa đọc (badge đỏ)
-// Mở panel → mark all is_read = true
+// SAFETY LOG
 // ================================================================
 const CRITICAL_EVENTS = ['THERMAL_CUTOFF', 'EMERGENCY_COOL'];
-var _safetyEntries = []; // { key, event, tsMs, is_read }
+var _safetyEntries = [];
 var _safetyPanelOpen = false;
 
 function fmtEventName(raw) {
@@ -846,9 +850,7 @@ function _renderSafetyLog() {
         var dotCls = isCrit ? 'log-dot critical' : 'log-dot warn';
         var unread = !e.is_read;
         var rowStyle = unread ? ' style="font-weight:600"' : ' style="opacity:0.7"';
-        var unreadDot = unread ?
-            '<span class="safety-unread-dot"></span>' :
-            '';
+        var unreadDot = unread ? '<span class="safety-unread-dot"></span>' : '';
         var valCell = isCrit ?
             '<td class="event-val" style="color:var(--accent-err);font-size:0.68rem;font-weight:600">CRITICAL</td>' :
             '<td class="event-val"></td>';
@@ -856,8 +858,7 @@ function _renderSafetyLog() {
             '<td><span class="' + dotCls + '"></span>' + unreadDot + '</td>' +
             '<td>' + toVnDate(e.tsMs) + '</td>' +
             '<td class="event-name">' + fmtEventName(e.event) + '</td>' +
-            valCell +
-            '</tr>';
+            valCell + '</tr>';
     }).join('');
 }
 
@@ -869,133 +870,84 @@ function _updateSafetyBadge() {
     badge.classList.toggle('hidden', unread === 0);
 }
 
-/** Gọi khi người dùng mở panel safety log → mark all read */
 function _markAllSafetyRead() {
     var unreadEntries = _safetyEntries.filter(function(e) { return !e.is_read; });
     if (unreadEntries.length === 0) return;
     unreadEntries.forEach(function(e) {
         e.is_read = true;
-        var relPath = 'history/last_safety_event/' + e.key + '/is_read';
-        setRef(relPath, true).catch(function(err) { console.warn('[safety] mark read failed:', err); });
+        setRef('history/last_safety_event/' + e.key + '/is_read', true)
+            .catch(function(err) { console.warn('[safety] mark read failed:', err); });
     });
     _renderSafetyLog();
     _updateSafetyBadge();
 }
 
-// Safety log panel toggle (gắn vào nút xem log nếu có)
 function toggleSafetyLog() {
     var panel = document.getElementById('safety-log-panel');
     if (!panel) return;
     _safetyPanelOpen = !_safetyPanelOpen;
     panel.classList.toggle('open', _safetyPanelOpen);
     var hint = document.getElementById('safety-log-toggle-hint');
-    if (hint) hint.textContent = _safetyPanelOpen ? '▲ thu gọn' : '▼ nhấn để xem & đánh dấu đã đọc';
+    if (hint) hint.textContent = _safetyPanelOpen ?
+        '▲ thu gọn' : '▼ nhấn để xem & đánh dấu đã đọc';
     if (_safetyPanelOpen) _markAllSafetyRead();
 }
 window.toggleSafetyLog = toggleSafetyLog;
 
 // ================================================================
-// INJECT CSS cho sensor-broken UI
+// INJECT CSS sensor-broken
 // ================================================================
 function injectSensorBrokenStyles() {
     if (document.getElementById('sensor-broken-style')) return;
     const style = document.createElement('style');
     style.id = 'sensor-broken-style';
-    style.textContent = [
-        '',
-        '        /* Card bị lỗi sensor */',
-        '        .card.sensor-broken {',
-        '            border: 1px solid rgba(248, 113, 113, 0.45) !important;',
-        '            background: rgba(248, 113, 113, 0.04) !important;',
-        '            position: relative;',
-        '            overflow: hidden;',
-        '        }',
-        '',
-        '        .card.sensor-broken::before {',
-        '            content: \\\'\\\';',
-        '            position: absolute;',
-        '            inset: 0;',
-        '            background: repeating-linear-gradient(',
-        '                -45deg,',
-        '                transparent,',
-        '                transparent 6px,',
-        '                rgba(248, 113, 113, 0.04) 6px,',
-        '                rgba(248, 113, 113, 0.04) 12px',
-        '            );',
-        '            pointer-events: none;',
-        '            z-index: 0;',
-        '            animation: broken-stripe 8s linear infinite;',
-        '        }',
-        '',
-        '        @keyframes broken-stripe {',
-        '            from { background-position: 0 0; }',
-        '            to   { background-position: 24px 24px; }',
-        '        }',
-        '',
-        '        /* Overlay thông tin lỗi */',
-        '        .sensor-broken-overlay {',
-        '            position: absolute;',
-        '            inset: 0;',
-        '            display: flex;',
-        '            flex-direction: column;',
-        '            align-items: center;',
-        '            justify-content: center;',
-        '            gap: 2px;',
-        // '            background: rgba(10, 12, 16, 0.75);',
-        '            backdrop-filter: blur(5px);',
-        '            z-index: 10;',
-        '            border-radius: inherit;',
-        '            animation: broken-fade-in 0.3s ease;',
-        '        }',
-        '',
-        '        @keyframes broken-fade-in {',
-        '            from { opacity: 0; transform: scale(0.97); }',
-        '            to   { opacity: 1; transform: scale(1); }',
-        '        }',
-        '',
-        '        .broken-icon {',
-        '            font-size: 1.4rem;',
-        '            animation: broken-pulse 1.4s ease-in-out infinite;',
-        '        }',
-        '',
-        '        @keyframes broken-pulse {',
-        '            0%, 100% { opacity: 1;   transform: scale(1); }',
-        '            50%       { opacity: 0.6; transform: scale(0.92); }',
-        '        }',
-        '',
-        '        .broken-title {',
-        '            font-size: 0.8rem;',
-        '            font-weight: 700;',
-        '            color: var(--accent-err, #f87171);',
-        '            letter-spacing: 0.04em;',
-        '        }',
-        '',
-        '        .broken-sub {',
-        '            font-size: 0.68rem;',
-        '            color: var(--text-sub, #94a3b8);',
-        '            margin-top: 1px;',
-        '        }',
-        '',
-        '        .broken-sub strong {',
-        '            color: var(--accent-err, #f87171);',
-        '        }',
-        '',
-        '        .broken-hint {',
-        '            font-size: 0.64rem;',
-        '            color: var(--text-dim, #64748b);',
-        '            margin-top: 3px;',
-        '        }',
-        '',
-        '        /* Badge lỗi */',
-        '        .source-badge.error-badge {',
-        '            background: rgba(248, 113, 113, 0.18);',
-        '            color: var(--accent-err, #f87171);',
-        '            border: 1px solid rgba(248, 113, 113, 0.35);',
-        '            font-weight: 700;',
-        '            animation: broken-pulse 1.4s ease-in-out infinite;',
-        '        }',
-        '    '
-    ].join('\n');
+    style.textContent = `
+        .card.sensor-broken {
+            border: 1px solid rgba(248,113,113,0.45) !important;
+            background: rgba(248,113,113,0.04) !important;
+            position: relative; overflow: hidden;
+        }
+        .card.sensor-broken::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: repeating-linear-gradient(
+                -45deg, transparent, transparent 6px,
+                rgba(248,113,113,0.04) 6px, rgba(248,113,113,0.04) 12px
+            );
+            pointer-events: none; z-index: 0;
+            animation: broken-stripe 8s linear infinite;
+        }
+        @keyframes broken-stripe {
+            from { background-position: 0 0; }
+            to   { background-position: 24px 24px; }
+        }
+        .sensor-broken-overlay {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 2px;
+            backdrop-filter: blur(5px); z-index: 10;
+            border-radius: inherit;
+            animation: broken-fade-in 0.3s ease;
+        }
+        @keyframes broken-fade-in {
+            from { opacity: 0; transform: scale(0.97); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        .broken-icon { font-size:1.4rem; animation: broken-pulse 1.4s ease-in-out infinite; }
+        @keyframes broken-pulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50%     { opacity:0.6; transform:scale(0.92); }
+        }
+        .broken-title { font-size:0.8rem; font-weight:700; color:var(--accent-err,#f87171); letter-spacing:0.04em; }
+        .broken-sub   { font-size:0.68rem; color:var(--text-sub,#94a3b8); margin-top:1px; }
+        .broken-sub strong { color:var(--accent-err,#f87171); }
+        .broken-hint  { font-size:0.64rem; color:var(--text-dim,#64748b); margin-top:3px; }
+        .source-badge.error-badge {
+            background:rgba(248,113,113,0.18); color:var(--accent-err,#f87171);
+            border:1px solid rgba(248,113,113,0.35); font-weight:700;
+            animation: broken-pulse 1.4s ease-in-out infinite;
+        }
+    `;
     document.head.appendChild(style);
 }
 
@@ -1009,29 +961,27 @@ function injectSensorBrokenStyles() {
     listenRef('status', updateStatus);
     listenRef('settings/config', updateUserConfig);
     listenRef('telemetry', updateTelemetry);
+    listenRef('ph_session', updatePhSession); // ← pH từ session
     listenRef('relay_state', updateRelayState);
     listenRef('water_change', updateWaterChange);
     listenRef('settings/water_schedule', updateWaterSchedule);
     listenRef('analytics', updateAnalytics);
 
-    // ── Shock events + Safety log — đọc từ Firebase history ─────
-    // Load lịch sử trước, rồi bật realtime sau (tránh onChildAdded replay)
+    _initPhSensorErrorListener();
+
     await _loadShockEvents();
     _startShockRealtime();
 
     await _loadSafetyEvents();
     _startSafetyRealtime();
 
-    // Firmware staleness watcher
     startStalenessWatcher();
 
-    // Offline banner — dùng onConnectionChange từ firebase-init
     onConnectionChange(function(connected) {
         document.getElementById('banner-offline')
             .classList.toggle('visible', !connected);
     });
 
-    // ── Biểu đồ lịch sử ─────────────────────────────────────────
     initCharts();
 
     onNewPoint(function({ sensor, value, ts }) {
@@ -1045,11 +995,9 @@ function injectSensorBrokenStyles() {
             history.ph.length, 'ph pts,',
             history.tds.length, 'tds pts'
         );
-        // Bắt đầu lắng nghe realtime RTDB sau khi đã nạp lịch sử
         startPolling();
     }).catch(function(e) {
         console.warn('[dashboard] fetchHistory failed:', e);
-        startPolling(); // vẫn lắng nghe realtime dù fetch lỗi
+        startPolling();
     });
-
 })();

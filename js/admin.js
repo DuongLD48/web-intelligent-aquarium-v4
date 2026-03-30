@@ -11,18 +11,14 @@ import { listenRef, updateRef, onConnectionChange, requireAuth, doLogout } from 
 const DEFAULTS_PIPELINE = {
     temp_range_min: 15.0,
     temp_range_max: 40.0,
-    ph_range_min: 4.0,
-    ph_range_max: 10.0,
     tds_range_min: 1.0,
     tds_range_max: 3000.0,
     mad_window_size: 30,
     mad_min_samples: 10,
     mad_threshold: 3.5,
     mad_floor_temp: 0.30,
-    mad_floor_ph: 0.08,
     mad_floor_tds: 3.0,
     shock_temp_delta: 3.0,
-    shock_ph_delta: 0.5,
 };
 
 const DEFAULTS_SAFETY = {
@@ -39,11 +35,9 @@ const DEFAULTS_ANALYTICS = {
     ema_alpha: 0.1,
     cusum_k: 0.5,
     cusum_threshold: 5.0,
-    wsi_weight_temp: 0.4,
-    wsi_weight_ph: 0.4,
-    wsi_weight_tds: 0.2,
+    wsi_weight_temp: 0.6,
+    wsi_weight_tds: 0.4,
     fsi_alpha: 0.5,
-    fsi_beta: 0.3,
     fsi_shock_penalty: 20.0,
 };
 const DEFAULTS_WATER_SCHEDULE = {
@@ -58,12 +52,15 @@ const DEFAULTS_CALIBRATION = {
     tds_factor: 1.0,
 };
 
+const DEFAULTS_DOSE_ADMIN = {
+    noise_threshold: 0.5,
+    shock_threshold: 0.5,
+};
+
 // ================================================================
 const SAFE_RANGES = {
     temp_range_min: { min: 0, max: 30, label: 'Temp Range Min' },
     temp_range_max: { min: 25, max: 60, label: 'Temp Range Max' },
-    ph_range_min: { min: 0, max: 6, label: 'pH Range Min' },
-    ph_range_max: { min: 8, max: 14, label: 'pH Range Max' },
     tds_range_min: { min: 0, max: 100, label: 'TDS Range Min' },
     tds_range_max: { min: 500, max: 10000, label: 'TDS Range Max' },
     mad_window_size: { min: 5, max: 200, label: 'MAD Window' },
@@ -79,6 +76,8 @@ const SAFE_RANGES = {
     pump_min_sec: { min: 1, max: 60, label: 'Pump Min' },
     pump_out_max_sec: { min: 10, max: 3600, label: 'Pump Out Max' },
     pump_in_max_sec: { min: 10, max: 7200, label: 'Pump In Max' },
+    noise_threshold: { min: 0.1, max: 2.0, label: 'pH Noise Threshold' },
+    shock_threshold: { min: 0.1, max: 2.0, label: 'pH Shock Threshold' },
 };
 
 // ================================================================
@@ -89,11 +88,13 @@ let currentSafety = {};
 let currentAnalytics = {};
 let currentWaterSchedule = {};
 let currentCalibration = {};
+let currentDoseAdmin = {};
 let formPipeline = {};
 let formSafety = {};
 let formAnalytics = {};
 let formWaterSchedule = {};
 let formCalibration = {};
+let formDoseAdmin = {};
 
 // ================================================================
 // FIELD → STATE MAP
@@ -101,18 +102,14 @@ let formCalibration = {};
 const FIELD_MAP = {
     'inp-temp-range-min': ['pipeline', 'temp_range_min'],
     'inp-temp-range-max': ['pipeline', 'temp_range_max'],
-    'inp-ph-range-min': ['pipeline', 'ph_range_min'],
-    'inp-ph-range-max': ['pipeline', 'ph_range_max'],
     'inp-tds-range-min': ['pipeline', 'tds_range_min'],
     'inp-tds-range-max': ['pipeline', 'tds_range_max'],
     'inp-mad-window': ['pipeline', 'mad_window_size'],
     'inp-mad-min-samples': ['pipeline', 'mad_min_samples'],
     'inp-mad-threshold': ['pipeline', 'mad_threshold'],
     'inp-mad-floor-temp': ['pipeline', 'mad_floor_temp'],
-    'inp-mad-floor-ph': ['pipeline', 'mad_floor_ph'],
     'inp-mad-floor-tds': ['pipeline', 'mad_floor_tds'],
     'inp-shock-temp': ['pipeline', 'shock_temp_delta'],
-    'inp-shock-ph': ['pipeline', 'shock_ph_delta'],
     'inp-thermal-cutoff': ['safety', 'thermal_cutoff_c'],
     'inp-emergency-cool': ['safety', 'temp_emergency_cool_c'],
     'inp-heater-max-runtime': ['safety', 'heater_max_runtime_ms'],
@@ -124,10 +121,8 @@ const FIELD_MAP = {
     'inp-ac-cusum-k': ['analytics', 'cusum_k'],
     'inp-ac-cusum-threshold': ['analytics', 'cusum_threshold'],
     'inp-ac-wsi-weight-temp': ['analytics', 'wsi_weight_temp'],
-    'inp-ac-wsi-weight-ph': ['analytics', 'wsi_weight_ph'],
     'inp-ac-wsi-weight-tds': ['analytics', 'wsi_weight_tds'],
     'inp-ac-fsi-alpha': ['analytics', 'fsi_alpha'],
-    'inp-ac-fsi-beta': ['analytics', 'fsi_beta'],
     'inp-ac-fsi-shock-penalty': ['analytics', 'fsi_shock_penalty'],
     'inp-pump-min-sec': ['waterSchedule', 'pump_min_sec'],
     'inp-pump-out-max-sec': ['waterSchedule', 'pump_out_max_sec'],
@@ -135,6 +130,8 @@ const FIELD_MAP = {
     'inp-ph-calib-slope': ['calibration', 'ph_slope'],
     'inp-ph-calib-offset': ['calibration', 'ph_offset'],
     'inp-tds-calib-factor': ['calibration', 'tds_factor'],
+    'inp-noise-threshold': ['doseAdmin', 'noise_threshold'],
+    'inp-shock-threshold': ['doseAdmin', 'shock_threshold'],
 };
 
 // ================================================================
@@ -150,6 +147,7 @@ const FIELD_MAP = {
     listenRef('settings/analytics_config', onAnalyticsSnap);
     listenRef('settings/water_schedule', onWaterScheduleSnap);
     listenRef('settings/calibration', onCalibrationSnap);
+    listenRef('settings/ph_dose_config', onDoseAdminSnap);
     listenRef('status', function(snap) {
         if (!snap.exists()) return;
         document.getElementById('dot-online').className = 'status-dot online';
@@ -222,27 +220,30 @@ function onCalibrationSnap(snap) {
     checkSafetyAlerts();
 }
 
+function onDoseAdminSnap(snap) {
+    var d = snap.exists() ? snap.val() : {};
+    currentDoseAdmin = Object.assign({}, DEFAULTS_DOSE_ADMIN, d);
+    formDoseAdmin = Object.assign({}, currentDoseAdmin);
+    setVal('inp-noise-threshold', currentDoseAdmin.noise_threshold);
+    setVal('inp-shock-threshold', currentDoseAdmin.shock_threshold);
+    updateDirtyState();
+    updateFieldHighlights();
+}
+
 // ================================================================
 // POPULATE FIELDS
 // ================================================================
 function populatePipelineFields() {
     setVal('inp-temp-range-min', currentPipeline.temp_range_min);
     setVal('inp-temp-range-max', currentPipeline.temp_range_max);
-    setVal('inp-ph-range-min', currentPipeline.ph_range_min);
-    setVal('inp-ph-range-max', currentPipeline.ph_range_max);
     setVal('inp-tds-range-min', currentPipeline.tds_range_min);
     setVal('inp-tds-range-max', currentPipeline.tds_range_max);
     setVal('inp-mad-window', currentPipeline.mad_window_size);
     setVal('inp-mad-min-samples', currentPipeline.mad_min_samples);
     setVal('inp-mad-threshold', currentPipeline.mad_threshold);
     setVal('inp-mad-floor-temp', currentPipeline.mad_floor_temp);
-    setVal('inp-mad-floor-ph', currentPipeline.mad_floor_ph);
     setVal('inp-mad-floor-tds', currentPipeline.mad_floor_tds);
     setVal('inp-shock-temp', currentPipeline.shock_temp_delta);
-    setVal('inp-shock-ph', currentPipeline.shock_ph_delta);
-    setVal('inp-ema-alpha', currentPipeline.ema_alpha);
-    setVal('inp-cusum-k', currentPipeline.cusum_k);
-    setVal('inp-cusum-threshold', currentPipeline.cusum_threshold);
 }
 
 function populateSafetyFields() {
@@ -268,10 +269,8 @@ function populateAnalyticsFields() {
     setVal('inp-ac-cusum-k', currentAnalytics.cusum_k);
     setVal('inp-ac-cusum-threshold', currentAnalytics.cusum_threshold);
     setVal('inp-ac-wsi-weight-temp', currentAnalytics.wsi_weight_temp);
-    setVal('inp-ac-wsi-weight-ph', currentAnalytics.wsi_weight_ph);
     setVal('inp-ac-wsi-weight-tds', currentAnalytics.wsi_weight_tds);
     setVal('inp-ac-fsi-alpha', currentAnalytics.fsi_alpha);
-    setVal('inp-ac-fsi-beta', currentAnalytics.fsi_beta);
     setVal('inp-ac-fsi-shock-penalty', currentAnalytics.fsi_shock_penalty);
 }
 
@@ -333,18 +332,14 @@ function syncForm() {
     // Pipeline
     formPipeline.temp_range_min = parseFloat(getVal('inp-temp-range-min'));
     formPipeline.temp_range_max = parseFloat(getVal('inp-temp-range-max'));
-    formPipeline.ph_range_min = parseFloat(getVal('inp-ph-range-min'));
-    formPipeline.ph_range_max = parseFloat(getVal('inp-ph-range-max'));
     formPipeline.tds_range_min = parseFloat(getVal('inp-tds-range-min'));
     formPipeline.tds_range_max = parseFloat(getVal('inp-tds-range-max'));
     formPipeline.mad_window_size = parseInt(getVal('inp-mad-window'));
     formPipeline.mad_min_samples = parseInt(getVal('inp-mad-min-samples'));
     formPipeline.mad_threshold = parseFloat(getVal('inp-mad-threshold'));
     formPipeline.mad_floor_temp = parseFloat(getVal('inp-mad-floor-temp'));
-    formPipeline.mad_floor_ph = parseFloat(getVal('inp-mad-floor-ph'));
     formPipeline.mad_floor_tds = parseFloat(getVal('inp-mad-floor-tds'));
     formPipeline.shock_temp_delta = parseFloat(getVal('inp-shock-temp'));
-    formPipeline.shock_ph_delta = parseFloat(getVal('inp-shock-ph'));
 
     // Safety
     formSafety.thermal_cutoff_c = parseFloat(getVal('inp-thermal-cutoff'));
@@ -358,10 +353,8 @@ function syncForm() {
     formAnalytics.cusum_k = parseFloat(getVal('inp-ac-cusum-k'));
     formAnalytics.cusum_threshold = parseFloat(getVal('inp-ac-cusum-threshold'));
     formAnalytics.wsi_weight_temp = parseFloat(getVal('inp-ac-wsi-weight-temp'));
-    formAnalytics.wsi_weight_ph = parseFloat(getVal('inp-ac-wsi-weight-ph'));
     formAnalytics.wsi_weight_tds = parseFloat(getVal('inp-ac-wsi-weight-tds'));
     formAnalytics.fsi_alpha = parseFloat(getVal('inp-ac-fsi-alpha'));
-    formAnalytics.fsi_beta = parseFloat(getVal('inp-ac-fsi-beta'));
     formAnalytics.fsi_shock_penalty = parseFloat(getVal('inp-ac-fsi-shock-penalty'));
 
     // Water Schedule
@@ -373,6 +366,10 @@ function syncForm() {
     formCalibration.ph_slope = parseFloat(getVal('inp-ph-calib-slope'));
     formCalibration.ph_offset = parseFloat(getVal('inp-ph-calib-offset'));
     formCalibration.tds_factor = parseFloat(getVal('inp-tds-calib-factor'));
+
+    // Dose Admin (noise/shock thresholds)
+    formDoseAdmin.noise_threshold = parseFloat(getVal('inp-noise-threshold'));
+    formDoseAdmin.shock_threshold = parseFloat(getVal('inp-shock-threshold'));
 }
 
 // ================================================================
@@ -410,8 +407,18 @@ function updateFieldHighlights() {
         var key = entry[1][1];
         var el = document.getElementById(id);
         if (!el) return;
-        var current = src === 'pipeline' ? currentPipeline : src === 'analytics' ? currentAnalytics : src === 'waterSchedule' ? currentWaterSchedule : src === 'calibration' ? currentCalibration : currentSafety;
-        var form = src === 'pipeline' ? formPipeline : src === 'analytics' ? formAnalytics : src === 'waterSchedule' ? formWaterSchedule : src === 'calibration' ? formCalibration : formSafety;
+        var current = src === 'pipeline' ? currentPipeline :
+            src === 'analytics' ? currentAnalytics :
+            src === 'waterSchedule' ? currentWaterSchedule :
+            src === 'calibration' ? currentCalibration :
+            src === 'doseAdmin' ? currentDoseAdmin :
+            currentSafety;
+        var form = src === 'pipeline' ? formPipeline :
+            src === 'analytics' ? formAnalytics :
+            src === 'waterSchedule' ? formWaterSchedule :
+            src === 'calibration' ? formCalibration :
+            src === 'doseAdmin' ? formDoseAdmin :
+            formSafety;
         el.classList.toggle('field-changed',
             form[key] !== undefined && form[key] !== current[key]);
     });
@@ -451,11 +458,10 @@ function checkSafetyAlerts() {
         if (_ms) _ms.classList.remove('field-danger');
     }
 
-    // WSI weights must sum to 1.0
+    // WSI weights must sum to 1.0 (temp + tds only, pH removed)
     var wt = parseFloat(getVal('inp-ac-wsi-weight-temp')) || 0;
-    var wp = parseFloat(getVal('inp-ac-wsi-weight-ph')) || 0;
     var wd = parseFloat(getVal('inp-ac-wsi-weight-tds')) || 0;
-    var wsum = Math.round((wt + wp + wd) * 1000) / 1000;
+    var wsum = Math.round((wt + wd) * 1000) / 1000;
     var wsiEl = document.getElementById('prev-wsi-weights');
     if (wsiEl) {
         wsiEl.textContent = '→ Tổng: ' + wsum.toFixed(3);
@@ -544,7 +550,8 @@ function isDirty() {
         JSON.stringify(formSafety) !== JSON.stringify(currentSafety) ||
         JSON.stringify(formAnalytics) !== JSON.stringify(currentAnalytics) ||
         JSON.stringify(formWaterSchedule) !== JSON.stringify(currentWaterSchedule) ||
-        JSON.stringify(formCalibration) !== JSON.stringify(currentCalibration);
+        JSON.stringify(formCalibration) !== JSON.stringify(currentCalibration) ||
+        JSON.stringify(formDoseAdmin) !== JSON.stringify(currentDoseAdmin);
 }
 
 function countDirtyFields() {
@@ -563,6 +570,9 @@ function countDirtyFields() {
     });
     Object.keys(currentCalibration).forEach(function(k) {
         if (formCalibration[k] !== currentCalibration[k]) n++;
+    });
+    Object.keys(currentDoseAdmin).forEach(function(k) {
+        if (formDoseAdmin[k] !== currentDoseAdmin[k]) n++;
     });
     return n;
 }
@@ -594,7 +604,6 @@ window.saveAll = function() {
         return;
     }
     var wsiSum = Math.round(((formAnalytics.wsi_weight_temp || 0) +
-        (formAnalytics.wsi_weight_ph || 0) +
         (formAnalytics.wsi_weight_tds || 0)) * 1000) / 1000;
     if (Math.abs(wsiSum - 1.0) >= 0.001) {
         showToast('Tổng WSI weights = ' + wsiSum.toFixed(3) + ' — phải bằng 1.000', 'error');
@@ -634,11 +643,15 @@ window.saveAll = function() {
             return updateRef('settings/calibration', formCalibration);
         })
         .then(function() {
+            return updateRef('settings/ph_dose_config', formDoseAdmin);
+        })
+        .then(function() {
             currentPipeline = Object.assign({}, formPipeline);
             currentSafety = Object.assign({}, formSafety);
             currentAnalytics = Object.assign({}, formAnalytics);
             currentWaterSchedule = Object.assign({}, formWaterSchedule);
             currentCalibration = Object.assign({}, formCalibration);
+            currentDoseAdmin = Object.assign({}, formDoseAdmin);
             updateDirtyState();
             updateFieldHighlights();
             showToast('Đã lưu thành công ✓', 'success');
@@ -662,11 +675,14 @@ window.revertChanges = function() {
     formAnalytics = Object.assign({}, currentAnalytics);
     formWaterSchedule = Object.assign({}, currentWaterSchedule);
     formCalibration = Object.assign({}, currentCalibration);
+    formDoseAdmin = Object.assign({}, currentDoseAdmin);
     populatePipelineFields();
     populateSafetyFields();
     populateAnalyticsFields();
     populateWaterScheduleFields();
     populateCalibrationFields();
+    setVal('inp-noise-threshold', currentDoseAdmin.noise_threshold);
+    setVal('inp-shock-threshold', currentDoseAdmin.shock_threshold);
     updateDirtyState();
     updateFieldHighlights();
     checkSafetyAlerts();
@@ -713,6 +729,9 @@ window.confirmReset = function() {
         })
         .then(function() {
             return updateRef('settings/calibration', DEFAULTS_CALIBRATION);
+        })
+        .then(function() {
+            return updateRef('settings/ph_dose_config', DEFAULTS_DOSE_ADMIN);
         })
         .then(function() {
             showToast('Đã khôi phục mặc định Admin ✓', 'success');
