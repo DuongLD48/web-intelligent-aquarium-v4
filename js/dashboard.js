@@ -7,6 +7,7 @@ import { listenRef, setRef, updateRef, readOnce, onConnectionChange, requireAuth
 import { db, DEVICE_ID } from './firebase-init.js';
 import {
     ref as fbRef,
+    onValue,
     onChildAdded,
     orderByKey,
     query as fbQuery,
@@ -211,7 +212,7 @@ function updateTelemetry(snap) {
         setFirmwareOnline(true);
     }
 
-    // ── Sensor error state — chỉ temp + tds ─────────────────────
+    // ── Sensor error state — temp + tds
     const tempBroken = updateSensorErrorState('temp', d.fb_temp);
     const tdsBroken = updateSensorErrorState('tds', d.fb_tds);
 
@@ -247,9 +248,6 @@ function updatePhSession(snap) {
     const ph = d.last_median_ph;
     if (ph === undefined || ph === null) return;
 
-    // Session thành công → xóa broken state nếu đang hiển thị
-    if (_phSensorBroken) _clearPhSensorBroken();
-
     // Không cập nhật nếu card đang ở trạng thái sensor broken
     const card = document.getElementById('card-ph');
     if (card && card.classList.contains('sensor-broken')) return;
@@ -257,9 +255,7 @@ function updatePhSession(snap) {
     document.getElementById('val-ph').textContent = parseFloat(ph).toFixed(2);
     updateArc('arc-ph', ph, gaugeRanges.ph.min, gaugeRanges.ph.max);
 
-    // Status dot — ok nếu có giá trị hợp lệ
-    const dotEl = document.getElementById('dot-ph');
-    if (dotEl) dotEl.className = 'status-dot ok';
+    setStatusDot('dot-ph', 'OK');
 
     // Badge — hiện trạng thái session
     const badge = document.getElementById('badge-ph-src');
@@ -272,55 +268,20 @@ function updatePhSession(snap) {
 }
 
 // ================================================================
-// PH SENSOR ERROR — từ ph_session/sensor_error (NOISY detection)
-// Set broken khi NOISY, reset khi updatePhSession nhận giá trị mới
+// PH SENSOR ERROR — lắng nghe ph_session/sensor_error (true/false)
+// Dùng cùng updateSensorErrorState như Temp/TDS
 // ================================================================
-var _phSensorBroken = false;
 const PH_SENSOR_ERROR_PATH = () => `devices/${DEVICE_ID}/ph_session/sensor_error`;
 
-function _showPhSensorBroken() {
-    _phSensorBroken = true;
-    var card = document.getElementById('card-ph');
-    if (!card) return;
-    card.classList.add('sensor-broken');
-
-    var existing = card.querySelector('.sensor-broken-overlay');
-    if (existing) existing.remove();
-
-    var overlay = document.createElement('div');
-    overlay.className = 'sensor-broken-overlay';
-    overlay.innerHTML =
-        '<span class="broken-icon">⚠</span>' +
-        '<span class="broken-title">Lỗi sensor pH</span>' +
-        '<span class="broken-sub">Kiểm tra lại kết nối sensor</span>' +
-        '<span class="broken-hint">Hệ thống sẽ thử lại lần đo tiếp theo</span>';
-    card.appendChild(overlay);
-
-    var badge = document.getElementById('badge-ph-src');
-    if (badge) { badge.textContent = 'LỖI';
-        badge.className = 'source-badge error-badge'; }
-    var dot = document.getElementById('dot-ph');
-    if (dot) dot.className = 'status-dot error';
-}
-
-function _clearPhSensorBroken() {
-    _phSensorBroken = false;
-    var card = document.getElementById('card-ph');
-    if (!card) return;
-    card.classList.remove('sensor-broken');
-    var ov = card.querySelector('.sensor-broken-overlay');
-    if (ov) ov.remove();
-}
-
 function _initPhSensorErrorListener() {
-    var q = fbQuery(fbRef(db, PH_SENSOR_ERROR_PATH()), orderByKey());
-    var _seenKeys = new Set();
-    onChildAdded(q, function(child) {
-        var isNew = !_seenKeys.has(child.key);
-        _seenKeys.add(child.key);
-        if (isNew && !child.val().is_read) {
-            _showPhSensorBroken();
-        }
+    onValue(fbRef(db, PH_SENSOR_ERROR_PATH()), function(snap) {
+        // Firmware ghi string "true"/"false" để Firebase không tự xóa node
+        const isBroken = snap.exists() && snap.val() === "true";
+        // Tái dùng updateSensorErrorState với fbCount giả:
+        // isBroken=true  → fbCount = SENSOR_ERROR_THRESHOLD + 1 (> threshold)
+        // isBroken=false → fbCount = 0
+        const fakeCount = isBroken ? SENSOR_ERROR_THRESHOLD + 1 : 0;
+        updateSensorErrorState('ph', fakeCount);
     });
 }
 
@@ -905,7 +866,9 @@ function injectSensorBrokenStyles() {
         .card.sensor-broken {
             border: 1px solid rgba(248,113,113,0.45) !important;
             background: rgba(248,113,113,0.04) !important;
-            position: relative; overflow: hidden;
+            position: relative !important;
+            overflow: hidden !important;
+            isolation: isolate !important;
         }
         .card.sensor-broken::before {
             content: '';
@@ -922,10 +885,13 @@ function injectSensorBrokenStyles() {
             to   { background-position: 24px 24px; }
         }
         .sensor-broken-overlay {
-            position: absolute; inset: 0;
+            position: absolute !important; inset: 0 !important;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center; gap: 2px;
-            backdrop-filter: blur(5px); z-index: 10;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            background: rgba(255,255,255,0.55);
+            z-index: 9999 !important;
             border-radius: inherit;
             animation: broken-fade-in 0.3s ease;
         }
