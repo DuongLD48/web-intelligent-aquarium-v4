@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập — Aquarium</title>
+    <title>Đăng nhập — Bể cá thông minh</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/style-additions.css">
     <style>
@@ -91,14 +91,13 @@
 <body>
     <div class="login-wrap">
         <div class="login-card">
-            <div class="login-logo">🐟</div>
-            <div class="login-title">Intelligent Aquarium</div>
+            <div class="login-title">Đăng nhập</div>
             <div class="login-sub">Đăng nhập để truy cập hệ thống giám sát</div>
 
             <div class="login-field">
-                <label class="form-label" for="inp-email">Email</label>
+                <label class="form-label" for="inp-email">Thư điện tử</label>
                 <input class="form-input login-input" type="email" id="inp-email"
-                    placeholder="email@example.com" autocomplete="email">
+                    placeholder="email@gmail.com" autocomplete="email">
             </div>
 
             <div class="login-field">
@@ -114,7 +113,7 @@
             <div class="login-error" id="login-error"></div>
 
             <div class="login-footer">
-                Intelligent Aquarium v4 &nbsp;·&nbsp; Hệ thống giám sát bể cá cảnh IoT
+                Bể cá thông minh &nbsp;·&nbsp; Hệ thống giám sát bể thuỷ sinh IoT
             </div>
         </div>
     </div>
@@ -155,7 +154,7 @@
             errEl.textContent = '';
 
             if (!email || !password) {
-                errEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu.';
+                errEl.textContent = 'Vui lòng nhập đầy đủ thư điện tử và mật khẩu.';
                 return;
             }
 
@@ -175,11 +174,11 @@
         function _errMsg(code) {
             switch (code) {
                 case 'auth/invalid-email':
-                    return 'Địa chỉ email không hợp lệ.';
+                    return 'Địa chỉ thư điện tử không hợp lệ.';
                 case 'auth/user-not-found':
                 case 'auth/wrong-password':
                 case 'auth/invalid-credential':
-                    return 'Email hoặc mật khẩu không đúng.';
+                    return 'Thư điện tử hoặc mật khẩu không đúng.';
                 case 'auth/too-many-requests':
                     return 'Quá nhiều lần thử. Vui lòng thử lại sau ít phút.';
                 case 'auth/network-request-failed':

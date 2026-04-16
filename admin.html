@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin — Aquarium</title>
+    <title>Quản trị — Bể cá thông minh</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/style-additions.css">
     <style>
@@ -235,28 +235,28 @@
 
         <!-- ── HEADER ──────────────────────────────────────────── -->
         <header class="app-header">
-            <span class="header-brand">🐟 Aquarium</span>
-            <span class="admin-badge">Admin</span>
+            <span class="header-brand">🐟 Bể cá thông minh</span>
+            <span class="admin-badge">Quản trị</span>
             <div class="header-status">
                 <span class="status-dot offline" id="dot-online"></span>
-                <span id="txt-online">Offline</span>
+                <span id="txt-online">Ngoại tuyến</span>
             </div>
             <nav class="header-nav">
-                <a href="index.html">Dashboard</a>
-                <a href="user-settings.html">Settings</a>
-                <a href="admin.html" class="active">Admin</a>
+                <a href="index.html">Theo dõi</a>
+                <a href="user-settings.html">Cài đặt</a>
+                <a href="admin.html" class="active">Quản trị</a>
                 <button id="btn-logout" onclick="import('./js/firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
             </nav>
 
             <!-- Mobile hamburger -->
             <div class="mobile-menu" id="mobile-menu">
-                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Trình đơn">
                     <span></span><span></span><span></span>
                 </button>
                 <div class="mobile-dropdown" id="mobile-dropdown">
-                    <a href="index.html">Dashboard</a>
-                    <a href="user-settings.html">Settings</a>
-                    <a href="admin.html" class="active">Admin</a>
+                    <a href="index.html">Theo dõi</a>
+                    <a href="user-settings.html">Cài đặt</a>
+                    <a href="admin.html" class="active">Quản trị</a>
                     <div class="mobile-dropdown-divider"></div>
                     <button onclick="import('./js/firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
                 </div>
@@ -286,7 +286,7 @@
                 <!-- ══════════════════════════════════════════════ -->
                 <div class="section-divider">
                     <div class="section-divider-line"></div>
-                    <span class="section-divider-label">Pipeline — Sensor Processing</span>
+                    <span class="section-divider-label">Luồng xử lý cảm biến (Pipeline)</span>
                     <div class="section-divider-line"></div>
                 </div>
 
@@ -297,12 +297,12 @@
                     <div class="subsection-title">Nhiệt độ</div>
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Temp Min (°C)</label>
+                            <label class="form-label">Nhiệt độ thấp nhất (°C)</label>
                             <input class="form-input" type="number" id="inp-temp-range-min" step="0.5">
                             <span class="param-desc">Giới hạn thấp nhất có thể đo vật lý</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Temp Max (°C)</label>
+                            <label class="form-label">Nhiệt độ cao nhất (°C)</label>
                             <input class="form-input" type="number" id="inp-temp-range-max" step="0.5">
                             <span class="param-desc">Giới hạn cao nhất có thể đo vật lý</span>
                         </div>
@@ -311,11 +311,11 @@
                     <div class="subsection-title">TDS</div>
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">TDS Min (ppm)</label>
+                            <label class="form-label">TDS thấp nhất (ppm)</label>
                             <input class="form-input" type="number" id="inp-tds-range-min" step="1">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">TDS Max (ppm)</label>
+                            <label class="form-label">TDS cao nhất (ppm)</label>
                             <input class="form-input" type="number" id="inp-tds-range-max" step="1">
                         </div>
                     </div>
@@ -323,19 +323,19 @@
 
                 <!-- A2 — MAD Outlier Detection -->
                 <div class="settings-card pipeline-card">
-                    <div class="settings-card-title pipeline">📊 MAD — Phát hiện outlier</div>
+                    <div class="settings-card-title pipeline">📊 Phát hiện giá trị bất thường (MAD)</div>
                     <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
-                        Median Absolute Deviation: lọc giá trị bất thường trước khi xử lý EMA/CUSUM.
+                        Độ lệch tuyệt đối trung vị (MAD): lọc giá trị bất thường trước khi xử lý EMA/CUSUM.
                     </div>
 
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Window Size</label>
+                            <label class="form-label">Cỡ cửa sổ</label>
                             <input class="form-input" type="number" id="inp-mad-window" step="1" min="5" max="200">
                             <span class="param-desc">Số mẫu lưu trong cửa sổ trượt</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Min Samples</label>
+                            <label class="form-label">Số mẫu tối thiểu</label>
                             <input class="form-input" type="number" id="inp-mad-min-samples" step="1" min="3">
                             <span class="param-desc">Tối thiểu cần đủ mẫu mới chạy MAD</span>
                         </div>
@@ -343,20 +343,20 @@
 
                     <div class="input-row-2" style="margin-top:var(--gap)">
                         <div class="form-group">
-                            <label class="form-label">Threshold (σ)</label>
+                            <label class="form-label">Ngưỡng (σ)</label>
                             <input class="form-input" type="number" id="inp-mad-threshold" step="0.1" min="1">
                             <span class="param-desc">Số độ lệch MAD để loại outlier</span>
                         </div>
                     </div>
 
-                    <div class="subsection-title" style="margin-top:18px">MAD Floor (giá trị sàn tối thiểu)</div>
+                    <div class="subsection-title" style="margin-top:18px">Giá trị sàn MAD</div>
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Floor Temp (°C)</label>
+                            <label class="form-label">Sàn nhiệt độ (°C)</label>
                             <input class="form-input" type="number" id="inp-mad-floor-temp" step="0.01">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Floor TDS (ppm)</label>
+                            <label class="form-label">Sàn TDS (ppm)</label>
                             <input class="form-input" type="number" id="inp-mad-floor-tds" step="0.1">
                         </div>
                     </div>
@@ -364,13 +364,13 @@
 
                 <!-- A3 — Shock Guard -->
                 <div class="settings-card pipeline-card">
-                    <div class="settings-card-title pipeline">⚡ Shock Guard</div>
+                    <div class="settings-card-title pipeline">⚡ Bảo vệ sốc (Shock Guard)</div>
                     <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
                         Phát hiện thay đổi đột ngột giữa 2 chu kỳ đọc cảm biến liên tiếp.
                     </div>
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Shock Temp Delta (°C)</label>
+                            <label class="form-label">Biên độ sốc nhiệt (°C)</label>
                             <input class="form-input" type="number" id="inp-shock-temp" step="0.1" min="0">
                             <span class="param-desc">Biến thiên 1 chu kỳ bị coi là sốc nhiệt</span>
                         </div>
@@ -379,29 +379,29 @@
 
                 <!-- A3b — pH Session Noise/Shock Filter -->
                 <div class="settings-card pipeline-card">
-                    <div class="settings-card-title pipeline">🧪 Bộ lọc pH Session</div>
+                    <div class="settings-card-title pipeline">🧪 Bộ lọc pH theo phiên đo</div>
                     <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
-                        Kiểm tra chất lượng 6 mẫu ADC trong mỗi session đo pH. Session bị bỏ qua nếu vi phạm — không dose, không ghi FALLBACK.
+                        Kiểm tra chất lượng 6 mẫu ADC trong mỗi phiên đo pH. Phiên đo sẽ bị bỏ qua nếu vi phạm — không bơm, không ghi dữ liệu dự phòng (Fallback).
                     </div>
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Noise Threshold (pH)</label>
+                            <label class="form-label">Ngưỡng nhiễu (pH)</label>
                             <input class="form-input" type="number" id="inp-noise-threshold" step="0.05" min="0.1" max="2.0">
-                            <span class="param-desc">max − min của 6 mẫu &gt; ngưỡng → NOISY, log sensor_error</span>
+                            <span class="param-desc">Hiệu giữa giá trị lớn nhất và nhỏ nhất của 6 mẫu vượt ngưỡng sẽ ghi lỗi cảm biến</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Shock Threshold (pH)</label>
+                            <label class="form-label">Ngưỡng sốc (pH)</label>
                             <input class="form-input" type="number" id="inp-shock-threshold" step="0.05" min="0.1" max="2.0">
-                            <span class="param-desc">|median hiện tại − lần trước| &gt; ngưỡng → SHOCK, log shock_event</span>
+                            <span class="param-desc">Chênh lệch trung vị giữa lần này và lần trước vượt ngưỡng sẽ ghi sự kiện sốc</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- A4 — Analytics Config -->
                 <div class="settings-card pipeline-card">
-                    <div class="settings-card-title pipeline">🔬 Analytics Config</div>
+                    <div class="settings-card-title pipeline">🔬 Cấu hình phân tích (Analytics)</div>
                     <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
-                        Tham số cho analytics engine (WSI / FSI / Drift) — EMA &amp; CUSUM riêng, độc lập với pipeline sensor.
+                        Tham số cho bộ phân tích (WSI / FSI / Drift) — EMA và CUSUM riêng, độc lập với luồng xử lý cảm biến.
                     </div>
 
                     <div class="subsection-title">EMA &amp; CUSUM</div>
@@ -409,41 +409,41 @@
                         <div class="form-group">
                             <label class="form-label">EMA Alpha (α)</label>
                             <input class="form-input" type="number" id="inp-ac-ema-alpha" step="0.001" min="0.001" max="0.5">
-                            <span class="param-desc">Độ mượt EMA cho analytics (0.001–0.5)</span>
+                            <span class="param-desc">Độ mượt EMA cho bộ phân tích (0.001–0.5)</span>
                         </div>
                         <div class="form-group">
                             <label class="form-label">CUSUM k</label>
                             <input class="form-input" type="number" id="inp-ac-cusum-k" step="0.001" min="0.001" max="10">
-                            <span class="param-desc">Allowance tích lũy mỗi bước</span>
+                            <span class="param-desc">Phần cộng dồn ở mỗi bước</span>
                         </div>
                     </div>
                     <div class="input-row-2" style="margin-top:var(--gap)">
                         <div class="form-group">
-                            <label class="form-label">CUSUM Threshold (h)</label>
+                            <label class="form-label">Ngưỡng CUSUM (h)</label>
                             <input class="form-input" type="number" id="inp-ac-cusum-threshold" step="0.001" min="0.001" max="100">
-                            <span class="param-desc">Ngưỡng kích hoạt cảnh báo drift</span>
+                            <span class="param-desc">Ngưỡng kích hoạt cảnh báo xu hướng lệch</span>
                         </div>
                     </div>
 
-                    <div class="subsection-title" style="margin-top:18px">WSI — Water Score Index</div>
+                    <div class="subsection-title" style="margin-top:18px">Chỉ số chất lượng nước (WSI)</div>
                     <div class="form-hint" style="margin-bottom:10px;font-size:0.7rem;color:var(--text-dim)">
                         Tổng 2 trọng số phải = 1.0 (pH không còn trong pipeline)
                     </div>
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Weight Temp</label>
+                            <label class="form-label">Trọng số nhiệt độ</label>
                             <input class="form-input" type="number" id="inp-ac-wsi-weight-temp" step="0.05" min="0" max="1">
                             <span class="param-desc">Trọng số nhiệt độ</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Weight TDS</label>
+                            <label class="form-label">Trọng số TDS</label>
                             <input class="form-input" type="number" id="inp-ac-wsi-weight-tds" step="0.05" min="0" max="1">
                             <span class="param-desc">Trọng số TDS</span>
                         </div>
                     </div>
                     <div class="form-preview mt-sm" id="prev-wsi-weights">→ Tổng: --</div>
 
-                    <div class="subsection-title" style="margin-top:18px">FSI — Fluctuation Score Index</div>
+                    <div class="subsection-title" style="margin-top:18px">Chỉ số dao động (FSI)</div>
                     <div class="input-row-2">
                         <div class="form-group">
                             <label class="form-label">FSI Alpha (α)</label>
@@ -451,9 +451,9 @@
                             <span class="param-desc">Trọng số biến động nhiệt độ</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Shock Penalty</label>
+                            <label class="form-label">Điểm phạt sốc</label>
                             <input class="form-input" type="number" id="inp-ac-fsi-shock-penalty" step="1" min="0" max="100">
-                            <span class="param-desc">Điểm phạt mỗi lần phát hiện shock</span>
+                            <span class="param-desc">Điểm phạt mỗi lần phát hiện sốc</span>
                         </div>
                     </div>
                 </div>
@@ -463,7 +463,7 @@
                 <!-- ══════════════════════════════════════════════ -->
                 <div class="section-divider">
                     <div class="section-divider-line"></div>
-                    <span class="section-divider-label">Calibration — Hiệu chuẩn cảm biến</span>
+                    <span class="section-divider-label">Hiệu chuẩn cảm biến</span>
                     <div class="section-divider-line"></div>
                 </div>
 
@@ -471,17 +471,17 @@
                 <div class="settings-card pipeline-card">
                     <div class="settings-card-title pipeline">⚗ Hiệu chuẩn pH</div>
                     <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
-                        Công thức: <code style="font-family:monospace;font-size:0.7rem;color:var(--accent-pipeline)">pH = slope × voltage + offset</code>. Dùng dung dịch chuẩn (buffer 4.0, 7.0) để đo voltage → tính slope &amp; offset trước khi nhập.
+                        Công thức: <code style="font-family:monospace;font-size:0.7rem;color:var(--accent-pipeline)">pH = hệ số dốc × điện áp + hệ số bù</code>. Dùng dung dịch chuẩn (mốc 4.0, 7.0) để đo điện áp rồi tính hệ số dốc và hệ số bù trước khi nhập.
                     </div>
 
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">pH Slope</label>
+                            <label class="form-label">Hệ số dốc pH</label>
                             <input class="form-input" type="number" id="inp-ph-calib-slope" step="0.001">
                             <span class="param-desc">Hệ số góc (thường âm, VD: −3.5)</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">pH Offset</label>
+                            <label class="form-label">Hệ số bù pH</label>
                             <input class="form-input" type="number" id="inp-ph-calib-offset" step="0.001">
                             <span class="param-desc">Hệ số bù (VD: 15.5)</span>
                         </div>
@@ -489,7 +489,7 @@
 
                     <!-- Live preview: voltage → pH -->
                     <div style="margin-top:12px">
-                        <label class="form-label" style="font-size:0.68rem">Kiểm tra nhanh — nhập voltage đo được (V):</label>
+                        <label class="form-label" style="font-size:0.68rem">Kiểm tra nhanh — nhập điện áp đo được (V):</label>
                         <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
                             <input class="form-input" type="number" id="inp-ph-calib-test-v" step="0.001" min="0" max="3.3" placeholder="VD: 2.1" style="max-width:120px" oninput="updatePhCalibPreview()">
                             <span class="form-preview" id="prev-ph-calib" style="margin:0">→ --</span>
@@ -497,7 +497,7 @@
                     </div>
 
                     <span class="form-error" id="err-ph-calib" style="display:none">
-                        Slope không được bằng 0
+                        Hệ số dốc không được bằng 0
                     </span>
                 </div>
 
@@ -505,12 +505,12 @@
                 <div class="settings-card pipeline-card">
                     <div class="settings-card-title pipeline">💎 Hiệu chuẩn TDS</div>
                     <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
-                        Hệ số nhân <code style="font-family:monospace;font-size:0.7rem;color:var(--accent-pipeline)">TDS_CALIB_FACTOR</code> áp dụng sau công thức polynomial chuẩn. Đo bằng TDS meter chuẩn, sau đó điều chỉnh factor cho đến khi khớp.
+                        Hệ số nhân <code style="font-family:monospace;font-size:0.7rem;color:var(--accent-pipeline)">TDS</code> áp dụng sau công thức chuẩn. Đo bằng bút đo TDS chuẩn, sau đó điều chỉnh hệ số cho đến khi khớp.
                     </div>
 
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">TDS Factor</label>
+                            <label class="form-label">Hệ số TDS</label>
                             <input class="form-input" type="number" id="inp-tds-calib-factor" step="0.01" min="0.1" max="5.0">
                             <span class="param-desc">Hệ số nhân đầu ra (mặc định: 1.0)</span>
                         </div>
@@ -520,7 +520,7 @@
                     </div>
 
                     <span class="form-error" id="err-tds-calib" style="display:none">
-                        Factor phải > 0
+                        Hệ số phải lớn hơn 0
                     </span>
                 </div>
 
@@ -529,45 +529,45 @@
                 <!-- ══════════════════════════════════════════════ -->
                 <div class="section-divider">
                     <div class="section-divider-line"></div>
-                    <span class="section-divider-label">Safety — Bảo vệ hệ thống</span>
+                    <span class="section-divider-label">Bảo vệ hệ thống</span>
                     <div class="section-divider-line"></div>
                 </div>
 
                 <!-- B1 — Thermal Safety -->
                 <div class="settings-card safety-card">
                     <div class="settings-card-title safety">🌡 Nhiệt độ an toàn</div>
-                    <span class="form-error visible" id="err-thermal" style="display:none">Thermal Cutoff phải > Emergency Cool</span>
+                    <span class="form-error visible" id="err-thermal" style="display:none">Ngưỡng cắt nhiệt phải lớn hơn ngưỡng làm mát khẩn</span>
 
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Thermal Cutoff (°C)</label>
+                            <label class="form-label">Ngưỡng cắt nhiệt (°C)</label>
                             <input class="form-input" type="number" id="inp-thermal-cutoff" step="0.5">
-                            <span class="param-desc">Cắt điện heater hoàn toàn khi vượt ngưỡng này</span>
+                            <span class="param-desc">Ngắt hoàn toàn bộ sưởi khi vượt ngưỡng này</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Emergency Cool (°C)</label>
+                            <label class="form-label">Ngưỡng làm mát khẩn (°C)</label>
                             <input class="form-input" type="number" id="inp-emergency-cool" step="0.5">
-                            <span class="param-desc">Bật cooler khẩn cấp khi vượt ngưỡng này</span>
+                            <span class="param-desc">Bật làm mát khẩn cấp khi vượt ngưỡng này</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- B2 — Heater Runtime -->
                 <div class="settings-card safety-card">
-                    <div class="settings-card-title safety">🔥 Giới hạn thời gian Heater</div>
+                    <div class="settings-card-title safety">🔥 Giới hạn thời gian bộ sưởi</div>
 
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Max Runtime (ms)</label>
+                            <label class="form-label">Thời gian chạy tối đa (ms)</label>
                             <input class="form-input" type="number" id="inp-heater-max-runtime" step="1000" min="0">
                             <span class="unit-hint" id="hint-heater-runtime">--</span>
-                            <span class="param-desc">Heater tự ngắt sau thời gian này dù chưa đạt nhiệt độ</span>
+                            <span class="param-desc">Bộ sưởi tự ngắt sau thời gian này dù chưa đạt nhiệt độ</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Cooldown (ms)</label>
+                            <label class="form-label">Thời gian nghỉ (ms)</label>
                             <input class="form-input" type="number" id="inp-heater-cooldown" step="1000" min="0">
                             <span class="unit-hint" id="hint-heater-cooldown">--</span>
-                            <span class="param-desc">Thời gian nghỉ bắt buộc giữa các lần bật heater</span>
+                            <span class="param-desc">Thời gian nghỉ bắt buộc giữa các lần bật bộ sưởi</span>
                         </div>
                     </div>
                 </div>
@@ -578,13 +578,13 @@
 
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Max Pulse (ms)</label>
+                            <label class="form-label">Xung tối đa (ms)</label>
                             <input class="form-input" type="number" id="inp-ph-max-pulse" step="100" min="100">
                             <span class="unit-hint" id="hint-ph-pulse">--</span>
-                            <span class="param-desc">Xung bơm tối đa mỗi lần kích hoạt pH pump</span>
+                            <span class="param-desc">Xung bơm tối đa mỗi lần kích hoạt bơm pH</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Min Interval (ms)</label>
+                            <label class="form-label">Khoảng nghỉ tối thiểu (ms)</label>
                             <input class="form-input" type="number" id="inp-ph-min-interval" step="1000" min="1000">
                             <span class="unit-hint" id="hint-ph-interval">--</span>
                             <span class="param-desc">Khoảng cách tối thiểu giữa 2 lần bơm pH</span>
@@ -594,13 +594,13 @@
 
                 <!-- B4 — Sensor Staleness -->
                 <div class="settings-card safety-card">
-                    <div class="settings-card-title safety">📡 Sensor Stale Threshold</div>
+                    <div class="settings-card-title safety">📡 Ngưỡng cảm biến chậm cập nhật</div>
 
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Stale Threshold (cycles)</label>
+                            <label class="form-label">Ngưỡng chậm cập nhật (chu kỳ)</label>
                             <input class="form-input" type="number" id="inp-stale-threshold" step="1" min="1" max="60">
-                            <span class="param-desc">Số chu kỳ fallback liên tiếp trước khi cảnh báo sensor cũ</span>
+                            <span class="param-desc">Số chu kỳ dự phòng liên tiếp trước khi cảnh báo cảm biến chậm cập nhật</span>
                         </div>
                     </div>
                 </div>
@@ -610,7 +610,7 @@
                 <!-- ══════════════════════════════════════════════ -->
                 <div class="section-divider">
                     <div class="section-divider-line"></div>
-                    <span class="section-divider-label">Water Schedule — Giới hạn bơm</span>
+                    <span class="section-divider-label">Lịch thay nước — Giới hạn bơm</span>
                     <div class="section-divider-line"></div>
                 </div>
 
@@ -618,18 +618,18 @@
                 <div class="settings-card safety-card">
                     <div class="settings-card-title safety">💧 Giới hạn thời gian bơm</div>
                     <div class="form-hint" style="margin-bottom:14px;font-size:0.73rem;color:var(--text-sub)">
-                        Kiểm soát an toàn thời gian bơm nước. Các giá trị này được firmware đọc từ
+                        Kiểm soát an toàn thời gian bơm nước. Các giá trị này được bộ điều khiển đọc từ
                         <code style="font-family:monospace;font-size:0.7rem;color:var(--accent-pipeline)">settings/water_schedule</code>.
                     </div>
 
                     <div class="input-row-2">
                         <div class="form-group">
-                            <label class="form-label">Pump Min (giây)</label>
+                            <label class="form-label">Thời gian bơm tối thiểu (giây)</label>
                             <input class="form-input" type="number" id="inp-pump-min-sec" step="1" min="1" max="60">
                             <span class="param-desc">Thời gian tối thiểu mỗi lần bơm (bơm ra &amp; bơm vào)</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Pump Out Max (giây)</label>
+                            <label class="form-label">Bơm ra tối đa (giây)</label>
                             <input class="form-input" type="number" id="inp-pump-out-max-sec" step="5" min="10" max="3600">
                             <span class="unit-hint" id="hint-pump-out-max">--</span>
                             <span class="param-desc">Giới hạn tối đa bơm ra — vượt quá sẽ dừng khẩn cấp</span>
@@ -638,7 +638,7 @@
 
                     <div class="input-row-2" style="margin-top:var(--gap)">
                         <div class="form-group">
-                            <label class="form-label">Pump In Max (giây)</label>
+                            <label class="form-label">Bơm vào tối đa (giây)</label>
                             <input class="form-input" type="number" id="inp-pump-in-max-sec" step="5" min="10" max="7200">
                             <span class="unit-hint" id="hint-pump-in-max">--</span>
                             <span class="param-desc">Giới hạn tối đa bơm vào — vượt quá sẽ dừng khẩn cấp</span>
@@ -667,11 +667,11 @@
         <!-- ── RESET CONFIRM OVERLAY ──────────────────────────── -->
         <div id="reset-confirm-overlay">
             <div class="confirm-box">
-                <div class="confirm-box-title">⚠ Khôi phục mặc định Admin?</div>
+                <div class="confirm-box-title">⚠ Khôi phục mặc định quản trị?</div>
                 <div class="confirm-box-body">
-                    Hành động này sẽ ghi đè <strong>toàn bộ cấu hình pipeline và safety</strong> về giá trị mặc định của nhà sản xuất.<br><br> Gõ <code style="color:var(--accent-err);font-family:monospace">RESET</code> để xác nhận:
+                    Hành động này sẽ ghi đè <strong>toàn bộ cấu hình xử lý cảm biến và an toàn</strong> về giá trị mặc định của nhà sản xuất.<br><br> Gõ <code style="color:var(--accent-err);font-family:monospace">XAC NHAN</code> để xác nhận:
                 </div>
-                <input class="form-input confirm-box-input" type="text" id="inp-reset-confirm" placeholder="Gõ RESET để xác nhận">
+                <input class="form-input confirm-box-input" type="text" id="inp-reset-confirm" placeholder="Gõ XAC NHAN để xác nhận">
                 <div class="confirm-box-actions">
                     <button class="btn btn-ghost btn-sm" onclick="hideResetConfirm()">Hủy</button>
                     <button class="btn btn-danger btn-sm" id="btn-confirm-reset" onclick="confirmReset()" disabled>Khôi phục</button>

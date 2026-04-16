@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings — Aquarium</title>
+    <title>Cài đặt — Bể cá thông minh</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
         .input-row-3 {
@@ -43,25 +43,25 @@
     <div class="page-wrapper">
 
         <header class="app-header">
-            <span class="header-brand">🐟 Aquarium</span>
+            <span class="header-brand">🐟 Bể cá thông minh</span>
             <div class="header-status">
                 <span class="status-dot offline" id="dot-online"></span>
-                <span id="txt-online">Offline</span>
+                <span id="txt-online">Ngoại tuyến</span>
             </div>
             <nav class="header-nav">
-                <a href="index.html">Dashboard</a>
-                <a href="user-settings.html" class="active">Settings</a>
-                <a href="admin.html">Admin</a>
+                <a href="index.html">Theo dõi</a>
+                <a href="user-settings.html" class="active">Cài đặt</a>
+                <a href="admin.html">Quản trị</a>
                 <button id="btn-logout" onclick="import('./js/firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
             </nav>
             <div class="mobile-menu" id="mobile-menu">
-                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Trình đơn">
                 <span></span><span></span><span></span>
             </button>
                 <div class="mobile-dropdown" id="mobile-dropdown">
-                    <a href="index.html">Dashboard</a>
-                    <a href="user-settings.html" class="active">Settings</a>
-                    <a href="admin.html">Admin</a>
+                    <a href="index.html">Theo dõi</a>
+                    <a href="user-settings.html" class="active">Cài đặt</a>
+                    <a href="admin.html">Quản trị</a>
                     <div class="mobile-dropdown-divider"></div>
                     <button onclick="import('./js/firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
                 </div>
@@ -80,12 +80,12 @@
                     <div class="settings-card-title temp">🌡 Nhiệt độ</div>
                     <div class="input-row">
                         <div class="form-group">
-                            <label class="form-label">Min (°C)</label>
+                            <label class="form-label">Thấp nhất (°C)</label>
                             <input class="form-input" type="number" id="inp-temp-min" min="15" max="35" step="0.1">
                             <span class="form-error" id="err-temp">Min phải nhỏ hơn Max tối thiểu 0.5°C</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Max (°C)</label>
+                            <label class="form-label">Cao nhất (°C)</label>
                             <input class="form-input" type="number" id="inp-temp-max" min="15.5" max="38" step="0.1">
                         </div>
                     </div>
@@ -97,12 +97,12 @@
                     <div class="settings-card-title ph">⚗ Độ pH</div>
                     <div class="input-row">
                         <div class="form-group">
-                            <label class="form-label">pH Min</label>
+                            <label class="form-label">pH thấp nhất</label>
                             <input class="form-input" type="number" id="inp-ph-min" min="5.0" max="9.0" step="0.1">
                             <span class="form-error" id="err-ph">Min phải nhỏ hơn Max tối thiểu 0.3</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">pH Max</label>
+                            <label class="form-label">pH cao nhất</label>
                             <input class="form-input" type="number" id="inp-ph-max" min="5.3" max="9.5" step="0.1">
                         </div>
                     </div>
@@ -111,7 +111,7 @@
 
                 <!-- SECTION 3 — TDS -->
                 <div class="settings-card">
-                    <div class="settings-card-title tds">💎 TDS</div>
+                    <div class="settings-card-title tds">💎 Chất rắn hòa tan (TDS)</div>
                     <div class="input-row">
                         <div class="form-group">
                             <label class="form-label">Mục tiêu (ppm)</label>
@@ -128,9 +128,9 @@
 
                 <!-- SECTION 4 — pH DOSE CONTROLLER -->
                 <div class="settings-card">
-                    <div class="settings-card-title ph">💊 Điều khiển pH — Linear Dose</div>
+                    <div class="settings-card-title ph">💊 Điều khiển pH — Bơm tuyến tính (Linear Dose)</div>
                     <div class="form-hint" style="margin-bottom:10px;font-size:0.76rem;color:var(--text-sub)">
-                        Đo pH mỗi <strong id="prev-interval-text">5 phút</strong> — tắt relay → warm-up → lấy median → bơm.
+                        Đo pH mỗi <strong id="prev-interval-text">5 phút</strong> — tắt thiết bị điều khiển → chờ ổn định → lấy trung vị → bơm.
                     </div>
 
                     <div class="subsection-title-sm">Thời gian đo</div>
@@ -138,41 +138,41 @@
                         <div class="form-group">
                             <label class="form-label">Chu kỳ đo (phút)</label>
                             <input class="form-input" type="number" id="inp-measure-interval-min" min="1" max="120" step="1">
-                            <span class="param-desc">Khoảng cách giữa 2 session</span>
+                            <span class="param-desc">Khoảng cách giữa 2 phiên đo</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Session (giây)</label>
+                            <label class="form-label">Phiên đo (giây)</label>
                             <input class="form-input" type="number" id="inp-session-duration-s" min="30" max="300" step="5">
-                            <span class="param-desc">Tổng thời gian safe mode mỗi lần đo</span>
+                            <span class="param-desc">Tổng thời gian chế độ an toàn của mỗi lần đo</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Warm-up (giây)</label>
+                            <label class="form-label">Ổn định đầu phiên (giây)</label>
                             <input class="form-input" type="number" id="inp-warmup-s" min="5" max="120" step="5">
-                            <span class="param-desc">Bỏ bao nhiêu giây đầu session</span>
+                            <span class="param-desc">Bỏ qua bao nhiêu giây đầu của phiên đo</span>
                         </div>
                     </div>
 
-                    <div class="subsection-title-sm">Công thức bơm: pulse = base + slope × overshoot</div>
+                    <div class="subsection-title-sm">Công thức bơm: xung = nền + độ dốc × độ lệch</div>
                     <div class="input-row-3">
                         <div class="form-group">
-                            <label class="form-label">Base pulse (ms)</label>
+                            <label class="form-label">Xung cơ bản (ms)</label>
                             <input class="form-input" type="number" id="inp-base-pulse-ms" min="50" max="3000" step="50">
-                            <span class="param-desc">Pulse tối thiểu khi vừa lệch khỏi vùng</span>
+                            <span class="param-desc">Xung tối thiểu khi vừa lệch khỏi vùng</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Slope (ms/1.0 pH)</label>
+                            <label class="form-label">Độ dốc tăng xung (ms/1.0 pH)</label>
                             <input class="form-input" type="number" id="inp-pulse-per-unit" min="100" max="5000" step="100">
                             <span class="param-desc">Thêm ms mỗi 1.0 đơn vị pH lệch</span>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Max pulse (ms)</label>
+                            <label class="form-label">Xung tối đa (ms)</label>
                             <input class="form-input" type="number" id="inp-max-pulse-ms" min="100" max="5000" step="100">
                             <span class="param-desc">Giới hạn tối đa mỗi lần bơm</span>
                         </div>
                     </div>
 
                     <div class="form-preview mt-sm" id="prev-dose">→ --</div>
-                    <span class="form-error" id="err-dose">Giá trị không hợp lệ (base ≤ max, warmup &lt; session, session ≤ chu kỳ)</span>
+                    <span class="form-error" id="err-dose">Giá trị không hợp lệ (xung cơ bản ≤ xung tối đa, thời gian ổn định &lt; phiên đo, phiên đo ≤ chu kỳ)</span>
                 </div>
 
                 <!-- SECTION 5 — THAY NƯỚC -->

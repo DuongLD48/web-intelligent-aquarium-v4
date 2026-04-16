@@ -92,7 +92,7 @@ function updateSensorErrorState(sensor, fbCount) {
 
     if (isBroken) {
         if (card) card.classList.add('sensor-broken');
-        if (valEl) valEl.textContent = 'ERR';
+        if (valEl) valEl.textContent = 'LỖI';
         if (arcEl) {
             arcEl.style.stroke = 'var(--accent-err)';
             arcEl.style.strokeDashoffset = GAUGE_CIRC_LG.toString();
@@ -123,7 +123,7 @@ function updateSensorErrorState(sensor, fbCount) {
         }
         if (dotEl) dotEl.className = 'status-dot ok';
         if (badge) {
-            badge.textContent = 'MEAS';
+            badge.textContent = 'ĐO';
             badge.className = 'source-badge measured';
         }
     }
@@ -139,11 +139,19 @@ function updateStatus(snap) {
     const d = snap.val();
 
     document.getElementById('dot-online').className = 'status-dot online';
-    document.getElementById('txt-online').textContent = 'Online';
+    document.getElementById('txt-online').textContent = 'Trực tuyến';
     document.getElementById('txt-uptime').textContent = fmtUptime(d.uptime_s);
+    _firmwareOnline = true;
 
     const banner = document.getElementById('banner-safe-mode');
     banner.classList.toggle('visible', !!d.safe_mode);
+
+    _systemInfo.uptimeS = typeof d.uptime_s === 'number' ? d.uptime_s : null;
+    _systemInfo.safeMode = !!d.safe_mode;
+    _systemInfo.wifiRssi = _pickFirstNumber(d, ['wifi_rssi', 'rssi', 'wifi_dbm', 'wifi_signal_dbm']);
+    _systemInfo.wifiPercent = _pickFirstNumber(d, ['wifi_percent', 'wifi_signal_pct', 'wifi_signal_percent']);
+    _systemInfo.wifiSsid = _pickFirstString(d, ['wifi_ssid', 'ssid', 'wifi_name']);
+    updateSystemInfoPanel();
 }
 
 // ================================================================
@@ -167,8 +175,18 @@ const STATUS_DOT_CLASS = {
 // ── Firmware staleness ───────────────────────────────────────────
 var _lastTelemetryHash = null;
 var _lastTelemetryTime = Date.now();
-var _firmwareOnline = true;
+var _firmwareOnline = false;
 var STALE_TIMEOUT_MS = 30000;
+var _cloudConnected = false;
+var _systemInfo = {
+    uptimeS: null,
+    safeMode: false,
+    wifiRssi: null,
+    wifiPercent: null,
+    wifiSsid: null,
+    lastTelemetryMs: null,
+    activeRelays: [],
+};
 
 function hashTelemetry(d) {
     return (d.timestamp || 0) + '|' + (d.temperature || 0) + '|' + (d.tds || 0);
@@ -181,15 +199,16 @@ function setFirmwareOnline(online) {
     var txt = document.getElementById('txt-online');
     if (online) {
         if (dot) dot.className = 'status-dot online';
-        if (txt) txt.textContent = 'Online';
+        if (txt) txt.textContent = 'Trực tuyến';
         var b = document.getElementById('banner-stale');
         if (b) b.classList.remove('visible');
     } else {
         if (dot) dot.className = 'status-dot offline';
-        if (txt) txt.textContent = 'Firmware offline';
+        if (txt) txt.textContent = 'Bộ điều khiển mất kết nối';
         var b2 = document.getElementById('banner-stale');
         if (b2) b2.classList.add('visible');
     }
+    updateSystemInfoPanel();
 }
 
 function startStalenessWatcher() {
@@ -209,7 +228,9 @@ function updateTelemetry(snap) {
     if (hash !== _lastTelemetryHash) {
         _lastTelemetryHash = hash;
         _lastTelemetryTime = Date.now();
+        _systemInfo.lastTelemetryMs = _lastTelemetryTime;
         setFirmwareOnline(true);
+        updateSystemInfoPanel();
     }
 
     // ── Sensor error state — temp + tds
@@ -262,7 +283,7 @@ function updatePhSession(snap) {
     if (badge && !badge.classList.contains('shock-badge') && !badge.classList.contains('error-badge')) {
         const state = (d.state || 'IDLE');
         const isMeasuring = (state === 'COLLECTING' || state === 'SAFE_MODE_WAIT');
-        badge.textContent = isMeasuring ? 'ĐO...' : 'MEAS';
+        badge.textContent = isMeasuring ? 'ĐANG ĐO' : 'ĐO';
         badge.className = 'source-badge ' + (isMeasuring ? 'fallback' : 'measured');
     }
 }
@@ -303,7 +324,7 @@ function setSourceBadge(badgeId, source) {
     if (el.classList.contains('error-badge')) return;
     if (el.classList.contains('shock-badge')) return;
     const isMeas = source === 'MEASURED';
-    el.textContent = isMeas ? 'MEAS' : 'FB';
+    el.textContent = isMeas ? 'ĐO' : 'DỰ PHÒNG';
     el.className = 'source-badge ' + (isMeas ? 'measured' : 'fallback');
 }
 
@@ -328,7 +349,7 @@ function shockFlash(cardId) {
 
     card.classList.remove('shock-active-out');
     card.classList.add('shock-active');
-    badge.textContent = '⚡ SHOCK';
+    badge.textContent = '⚡ SỐC';
     badge.className = 'source-badge shock-badge';
 
     if (_shockBadgeTimers[sensorKey].timer)
@@ -384,12 +405,12 @@ function _showShockDialog(key, type, before, after, tsMs) {
     if (!overlay) return;
 
     if (type === 'ph') {
-        if (titleEl) titleEl.textContent = '⚡ Shock pH phát hiện';
+        if (titleEl) titleEl.textContent = '⚡ Phát hiện sốc pH';
         if (labelEl) labelEl.textContent = 'pH';
         if (beforeEl) beforeEl.textContent = parseFloat(before).toFixed(2);
         if (afterEl) afterEl.textContent = parseFloat(after).toFixed(2);
     } else {
-        if (titleEl) titleEl.textContent = '🌡 Shock Nhiệt độ phát hiện';
+        if (titleEl) titleEl.textContent = '🌡 Phát hiện sốc nhiệt độ';
         if (labelEl) labelEl.textContent = 'Nhiệt độ';
         if (beforeEl) beforeEl.textContent = parseFloat(before).toFixed(1) + '°C';
         if (afterEl) afterEl.textContent = parseFloat(after).toFixed(1) + '°C';
@@ -489,12 +510,12 @@ function _renderShockLog() {
     var tbody = document.getElementById('shock-log-body');
     if (!tbody) return;
     if (_shockEntries.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px 0;font-size:0.75rem">Chưa có sự kiện shock</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px 0;font-size:0.75rem">Chưa có sự kiện sốc</td></tr>';
         return;
     }
     tbody.innerHTML = _shockEntries.map(function(e) {
         var typeIcon = e.type === 'ph' ? '⚗' : '🌡';
-        var typeLbl = e.type === 'ph' ? 'pH' : 'Nhiệt';
+        var typeLbl = e.type === 'ph' ? 'pH' : 'Nhiệt độ';
         var beforeStr = e.type === 'ph' ?
             parseFloat(e.before).toFixed(2) :
             parseFloat(e.before).toFixed(1) + '°';
@@ -569,6 +590,94 @@ function updateUserConfig(snap) {
     }
 }
 
+function updateSystemInfoPanel() {
+    _setSystemText('sys-uptime', _systemInfo.uptimeS != null ? fmtUptimeLong(_systemInfo.uptimeS) : '--');
+    _setSystemText('sys-cloud', _cloudConnected ? 'Đã kết nối' : 'Mất kết nối');
+    _setSystemText('sys-controller', _firmwareOnline ? 'Đang phản hồi' : 'Không phản hồi');
+    _setSystemText('sys-safe-mode', _systemInfo.safeMode ? 'Đang bật' : 'Đang tắt');
+    _setSystemText('sys-wifi', _formatWifiInfo());
+    _setSystemText('sys-ssid', _systemInfo.wifiSsid || 'Chưa có dữ liệu');
+    _setSystemText('sys-last-telemetry', _systemInfo.lastTelemetryMs ? toVnDate(_systemInfo.lastTelemetryMs) : 'Chưa có dữ liệu');
+    _setSystemText(
+        'sys-active-relays',
+        _systemInfo.activeRelays.length ? _systemInfo.activeRelays.join(', ') : 'Không có thiết bị nào bật'
+    );
+
+    var pill = document.getElementById('pill-system-health');
+    if (!pill) return;
+
+    var level = _firmwareOnline && _cloudConnected && !_systemInfo.safeMode ? 'ok' :
+        (_firmwareOnline && _cloudConnected ? 'warn' : 'error');
+    pill.className = 'system-info-pill ' + level;
+    pill.textContent = level === 'ok' ? 'Hệ thống ổn định' :
+        level === 'warn' ? 'Cần theo dõi' :
+        'Cần kiểm tra';
+}
+
+function _setSystemText(id, text) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = text;
+}
+
+function _pickFirstNumber(obj, keys) {
+    for (var i = 0; i < keys.length; i++) {
+        var v = obj[keys[i]];
+        if (typeof v === 'number' && !isNaN(v)) return v;
+        if (typeof v === 'string' && v.trim() !== '' && !isNaN(parseFloat(v))) return parseFloat(v);
+    }
+    return null;
+}
+
+function _pickFirstString(obj, keys) {
+    for (var i = 0; i < keys.length; i++) {
+        var v = obj[keys[i]];
+        if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return null;
+}
+
+function _formatWifiInfo() {
+    if (_systemInfo.wifiRssi != null) {
+        var rssi = _systemInfo.wifiRssi;
+        var quality = rssi >= -60 ? 'Rất tốt' :
+            rssi >= -70 ? 'Tốt' :
+            rssi >= -80 ? 'Trung bình' :
+            'Yếu';
+        return quality + ' (' + rssi + ' dBm)';
+    }
+    if (_systemInfo.wifiPercent != null) {
+        var pct = Math.max(0, Math.min(100, Math.round(_systemInfo.wifiPercent)));
+        var qualityPct = pct >= 75 ? 'Rất tốt' :
+            pct >= 50 ? 'Tốt' :
+            pct >= 25 ? 'Trung bình' :
+            'Yếu';
+        return qualityPct + ' (' + pct + '%)';
+    }
+    return 'Chưa có dữ liệu';
+}
+
+function fmtUptimeLong(sec) {
+    if (!sec && sec !== 0) return '--';
+    var d = Math.floor(sec / 86400);
+    var h = Math.floor((sec % 86400) / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    if (d > 0) return d + ' ngày ' + h + ' giờ';
+    if (h > 0) return h + ' giờ ' + m + ' phút';
+    return m + ' phút';
+}
+
+function _relayName(key) {
+    var map = {
+        heater: 'Sưởi',
+        cooler: 'Làm mát',
+        ph_up: 'Tăng pH',
+        ph_down: 'Giảm pH',
+        pump_in: 'Bơm vào',
+        pump_out: 'Bơm ra',
+    };
+    return map[key] || key;
+}
+
 // ================================================================
 // RELAY STATE
 // ================================================================
@@ -584,13 +693,17 @@ const RELAY_MAP = {
 function updateRelayState(snap) {
     if (!snap.exists()) return;
     const d = snap.val();
+    const activeRelays = [];
     for (const [key, ids] of Object.entries(RELAY_MAP)) {
         const on = !!d[key];
         const item = document.getElementById(ids.item);
         const toggle = document.getElementById(ids.toggle);
         if (item) item.classList.toggle('on', on);
         if (toggle) toggle.classList.toggle('on', on);
+        if (on) activeRelays.push(_relayName(key));
     }
+    _systemInfo.activeRelays = activeRelays;
+    updateSystemInfoPanel();
 }
 
 // ================================================================
@@ -615,7 +728,7 @@ function updateWaterChange(snap) {
         badge.textContent = 'BƠM VÀO';
     } else {
         badge.classList.add('idle');
-        badge.textContent = 'IDLE';
+        badge.textContent = 'NGHỈ';
     }
 
     const btn = document.getElementById('btn-water-change');
@@ -741,9 +854,12 @@ function updateAnalytics(snap) {
 function setDrift(elId, val) {
     const el = document.getElementById(elId);
     if (!el) return;
-    const v = (val || 'NONE').toUpperCase();
-    el.textContent = v;
-    el.className = v === 'UP' ? 'drift-up' : v === 'DOWN' ? 'drift-down' : 'drift-none';
+    const raw = (val || 'NONE').toString().toUpperCase();
+    const label = (raw === 'UP' || raw === 'TANG' || raw === 'TĂNG') ? 'TĂNG' :
+        (raw === 'DOWN' || raw === 'GIAM' || raw === 'GIẢM') ? 'GIẢM' :
+        'KHÔNG';
+    el.textContent = label;
+    el.className = label === 'TĂNG' ? 'drift-up' : label === 'GIẢM' ? 'drift-down' : 'drift-none';
 }
 
 // ================================================================
@@ -757,12 +873,12 @@ function fmtEventName(raw) {
     const MAP = {
         THERMAL_CUTOFF: 'Cắt nhiệt',
         EMERGENCY_COOL: 'Làm mát khẩn',
-        HEATER_RUNTIME_LIMIT: 'Heater quá giờ',
-        HEATER_COOLDOWN: 'Heater nghỉ',
-        SENSOR_UNRELIABLE: 'Sensor lỗi',
-        SENSOR_STALE: 'Sensor cũ',
-        MUTUAL_EXCLUSION: 'Xung đột relay',
-        PH_PUMP_INTERVAL: 'pH interval',
+        HEATER_RUNTIME_LIMIT: 'Bộ sưởi chạy quá lâu',
+        HEATER_COOLDOWN: 'Bộ sưởi đang nghỉ',
+        SENSOR_UNRELIABLE: 'Cảm biến lỗi',
+        SENSOR_STALE: 'Cảm biến chậm cập nhật',
+        MUTUAL_EXCLUSION: 'Xung đột thiết bị',
+        PH_PUMP_INTERVAL: 'Khoảng nghỉ bơm pH',
         SHOCK_GUARD: 'Sốc cảm biến',
     };
     return MAP[raw] || raw;
@@ -813,7 +929,7 @@ function _renderSafetyLog() {
         var rowStyle = unread ? ' style="font-weight:600"' : ' style="opacity:0.7"';
         var unreadDot = unread ? '<span class="safety-unread-dot"></span>' : '';
         var valCell = isCrit ?
-            '<td class="event-val" style="color:var(--accent-err);font-size:0.68rem;font-weight:600">CRITICAL</td>' :
+            '<td class="event-val" style="color:var(--accent-err);font-size:0.68rem;font-weight:600">NGHIÊM TRỌNG</td>' :
             '<td class="event-val"></td>';
         return '<tr' + rowStyle + '>' +
             '<td><span class="' + dotCls + '"></span>' + unreadDot + '</td>' +
@@ -850,7 +966,7 @@ function toggleSafetyLog() {
     panel.classList.toggle('open', _safetyPanelOpen);
     var hint = document.getElementById('safety-log-toggle-hint');
     if (hint) hint.textContent = _safetyPanelOpen ?
-        '▲ thu gọn' : '▼ nhấn để xem & đánh dấu đã đọc';
+        '▲ thu gọn' : '▼ nhấn để xem và đánh dấu đã đọc';
     if (_safetyPanelOpen) _markAllSafetyRead();
 }
 window.toggleSafetyLog = toggleSafetyLog;
@@ -917,12 +1033,30 @@ function injectSensorBrokenStyles() {
     document.head.appendChild(style);
 }
 
+function moveSystemInfoToPageEnd() {
+    const panel = document.querySelector('.system-info-card');
+    const chartSection = document.querySelector('.chart-section');
+    if (!panel || !chartSection) return;
+
+    let wrapper = document.querySelector('.system-info-section');
+    if (!wrapper) {
+        wrapper = document.createElement('section');
+        wrapper.className = 'chart-section system-info-section';
+        chartSection.insertAdjacentElement('afterend', wrapper);
+    }
+
+    panel.style.gridColumn = '';
+    panel.classList.remove('temp-marker');
+    wrapper.appendChild(panel);
+}
+
 // ================================================================
 // INIT
 // ================================================================
 (async function init() {
     await requireAuth();
     injectSensorBrokenStyles();
+    moveSystemInfoToPageEnd();
 
     listenRef('status', updateStatus);
     listenRef('settings/config', updateUserConfig);
@@ -944,8 +1078,10 @@ function injectSensorBrokenStyles() {
     startStalenessWatcher();
 
     onConnectionChange(function(connected) {
+        _cloudConnected = connected;
         document.getElementById('banner-offline')
             .classList.toggle('visible', !connected);
+        updateSystemInfoPanel();
     });
 
     initCharts();

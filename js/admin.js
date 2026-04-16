@@ -59,25 +59,25 @@ const DEFAULTS_DOSE_ADMIN = {
 
 // ================================================================
 const SAFE_RANGES = {
-    temp_range_min: { min: 0, max: 30, label: 'Temp Range Min' },
-    temp_range_max: { min: 25, max: 60, label: 'Temp Range Max' },
-    tds_range_min: { min: 0, max: 100, label: 'TDS Range Min' },
-    tds_range_max: { min: 500, max: 10000, label: 'TDS Range Max' },
-    mad_window_size: { min: 5, max: 200, label: 'MAD Window' },
-    mad_min_samples: { min: 3, max: 100, label: 'MAD Min Samples' },
-    mad_threshold: { min: 1.0, max: 10.0, label: 'MAD Threshold' },
-    thermal_cutoff_c: { min: 35, max: 55, label: 'Thermal Cutoff' },
-    temp_emergency_cool_c: { min: 30, max: 45, label: 'Emergency Cool' },
-    heater_max_runtime_ms: { min: 60000, max: 3600000, label: 'Heater Max Runtime' },
-    heater_cooldown_ms: { min: 30000, max: 1800000, label: 'Heater Cooldown' },
-    ph_pump_max_pulse_ms: { min: 100, max: 10000, label: 'pH Max Pulse' },
-    ph_pump_min_interval_ms: { min: 5000, max: 300000, label: 'pH Min Interval' },
-    stale_sensor_threshold: { min: 1, max: 60, label: 'Stale Threshold' },
-    pump_min_sec: { min: 1, max: 60, label: 'Pump Min' },
-    pump_out_max_sec: { min: 10, max: 3600, label: 'Pump Out Max' },
-    pump_in_max_sec: { min: 10, max: 7200, label: 'Pump In Max' },
-    noise_threshold: { min: 0.1, max: 2.0, label: 'pH Noise Threshold' },
-    shock_threshold: { min: 0.1, max: 2.0, label: 'pH Shock Threshold' },
+    temp_range_min: { min: 0, max: 30, label: 'Nhiệt độ thấp nhất' },
+    temp_range_max: { min: 25, max: 60, label: 'Nhiệt độ cao nhất' },
+    tds_range_min: { min: 0, max: 100, label: 'TDS thấp nhất' },
+    tds_range_max: { min: 500, max: 10000, label: 'TDS cao nhất' },
+    mad_window_size: { min: 5, max: 200, label: 'Cỡ cửa sổ MAD' },
+    mad_min_samples: { min: 3, max: 100, label: 'Số mẫu tối thiểu MAD' },
+    mad_threshold: { min: 1.0, max: 10.0, label: 'Ngưỡng MAD' },
+    thermal_cutoff_c: { min: 35, max: 55, label: 'Ngưỡng cắt nhiệt' },
+    temp_emergency_cool_c: { min: 30, max: 45, label: 'Ngưỡng làm mát khẩn' },
+    heater_max_runtime_ms: { min: 60000, max: 3600000, label: 'Thời gian chạy tối đa của bộ sưởi' },
+    heater_cooldown_ms: { min: 30000, max: 1800000, label: 'Thời gian nghỉ của bộ sưởi' },
+    ph_pump_max_pulse_ms: { min: 100, max: 10000, label: 'Xung pH tối đa' },
+    ph_pump_min_interval_ms: { min: 5000, max: 300000, label: 'Khoảng nghỉ bơm pH' },
+    stale_sensor_threshold: { min: 1, max: 60, label: 'Ngưỡng chậm cập nhật' },
+    pump_min_sec: { min: 1, max: 60, label: 'Thời gian bơm tối thiểu' },
+    pump_out_max_sec: { min: 10, max: 3600, label: 'Bơm ra tối đa' },
+    pump_in_max_sec: { min: 10, max: 7200, label: 'Bơm vào tối đa' },
+    noise_threshold: { min: 0.1, max: 2.0, label: 'Ngưỡng nhiễu pH' },
+    shock_threshold: { min: 0.1, max: 2.0, label: 'Ngưỡng sốc pH' },
 };
 
 // ================================================================
@@ -151,7 +151,7 @@ const FIELD_MAP = {
     listenRef('status', function(snap) {
         if (!snap.exists()) return;
         document.getElementById('dot-online').className = 'status-dot online';
-        document.getElementById('txt-online').textContent = 'Online';
+        document.getElementById('txt-online').textContent = 'Trực tuyến';
     });
 
     onConnectionChange(function(connected) {
@@ -437,7 +437,7 @@ function checkSafetyAlerts() {
     var errEl = document.getElementById('err-thermal');
     if (errEl) errEl.style.display = thermalOk ? 'none' : 'block';
     if (!thermalOk && !isNaN(cutoff) && !isNaN(eCool)) {
-        alerts.push('⚠ Thermal Cutoff phải lớn hơn Emergency Cool');
+        alerts.push('⚠ Ngưỡng cắt nhiệt phải lớn hơn ngưỡng làm mát khẩn');
         document.getElementById('inp-thermal-cutoff').classList.add('field-danger');
         document.getElementById('inp-emergency-cool').classList.add('field-danger');
     } else {
@@ -451,7 +451,7 @@ function checkSafetyAlerts() {
     var win = parseInt(getVal('inp-mad-window'));
     var minS = parseInt(getVal('inp-mad-min-samples'));
     if (!isNaN(win) && !isNaN(minS) && minS > win) {
-        alerts.push('⚠ MAD Min Samples (' + minS + ') không được lớn hơn Window Size (' + win + ')');
+        alerts.push('⚠ Số mẫu tối thiểu của MAD (' + minS + ') không được lớn hơn cỡ cửa sổ (' + win + ')');
         document.getElementById('inp-mad-min-samples').classList.add('field-danger');
     } else {
         var _ms = document.getElementById('inp-mad-min-samples');
@@ -474,7 +474,7 @@ function checkSafetyAlerts() {
     // Analytics EMA alpha
     var acAlpha = parseFloat(getVal('inp-ac-ema-alpha'));
     if (!isNaN(acAlpha) && (acAlpha <= 0 || acAlpha > 0.5)) {
-        alerts.push('⚠ Analytics EMA Alpha phải trong khoảng (0, 0.5]');
+        alerts.push('⚠ Hệ số EMA của phần phân tích phải nằm trong khoảng (0, 0.5]');
         var _aa = document.getElementById('inp-ac-ema-alpha');
         if (_aa) _aa.classList.add('field-danger');
     } else {
@@ -486,7 +486,7 @@ function checkSafetyAlerts() {
     var phSlope = parseFloat(getVal('inp-ph-calib-slope'));
     var errPhCalib = document.getElementById('err-ph-calib');
     if (!isNaN(phSlope) && phSlope === 0) {
-        alerts.push('⚠ pH Slope không được bằng 0');
+        alerts.push('⚠ Hệ số dốc pH không được bằng 0');
         var _sl = document.getElementById('inp-ph-calib-slope');
         if (_sl) _sl.classList.add('field-danger');
         if (errPhCalib) errPhCalib.style.display = 'block';
@@ -500,7 +500,7 @@ function checkSafetyAlerts() {
     var tdsFactor = parseFloat(getVal('inp-tds-calib-factor'));
     var errTdsCalib = document.getElementById('err-tds-calib');
     if (!isNaN(tdsFactor) && tdsFactor <= 0) {
-        alerts.push('⚠ TDS Factor phải lớn hơn 0');
+        alerts.push('⚠ Hệ số TDS phải lớn hơn 0');
         var _tf = document.getElementById('inp-tds-calib-factor');
         if (_tf) _tf.classList.add('field-danger');
         if (errTdsCalib) errTdsCalib.style.display = 'block';
@@ -594,13 +594,13 @@ window.saveAll = function() {
     var cutoff = formSafety.thermal_cutoff_c;
     var eCool = formSafety.temp_emergency_cool_c;
     if (!isNaN(cutoff) && !isNaN(eCool) && cutoff <= eCool) {
-        showToast('Thermal Cutoff phải > Emergency Cool', 'error');
+        showToast('Ngưỡng cắt nhiệt phải lớn hơn ngưỡng làm mát khẩn', 'error');
         return;
     }
 
     var acAlpha = formAnalytics.ema_alpha;
     if (isNaN(acAlpha) || acAlpha <= 0 || acAlpha > 0.5) {
-        showToast('Analytics EMA Alpha không hợp lệ (0 < α ≤ 0.5)', 'error');
+        showToast('Hệ số EMA của phần phân tích không hợp lệ (0 < α ≤ 0.5)', 'error');
         return;
     }
     var wsiSum = Math.round(((formAnalytics.wsi_weight_temp || 0) +
@@ -612,11 +612,11 @@ window.saveAll = function() {
 
     // Calibration guards
     if (isNaN(formCalibration.ph_slope) || formCalibration.ph_slope === 0) {
-        showToast('pH Slope không hợp lệ (không được bằng 0)', 'error');
+        showToast('Hệ số dốc pH không hợp lệ (không được bằng 0)', 'error');
         return;
     }
     if (isNaN(formCalibration.tds_factor) || formCalibration.tds_factor <= 0) {
-        showToast('TDS Factor không hợp lệ (phải > 0)', 'error');
+        showToast('Hệ số TDS không hợp lệ (phải lớn hơn 0)', 'error');
         return;
     }
 
@@ -707,7 +707,7 @@ function attachResetConfirmListener() {
     if (!inp) return;
     inp.addEventListener('input', function() {
         document.getElementById('btn-confirm-reset').disabled =
-            inp.value.trim() !== 'RESET';
+            inp.value.trim().toUpperCase() !== 'XAC NHAN';
     });
 }
 
@@ -734,7 +734,7 @@ window.confirmReset = function() {
             return updateRef('settings/ph_dose_config', DEFAULTS_DOSE_ADMIN);
         })
         .then(function() {
-            showToast('Đã khôi phục mặc định Admin ✓', 'success');
+            showToast('Đã khôi phục mặc định quản trị ✓', 'success');
         })
         .catch(function(err) {
             showToast('Khôi phục thất bại: ' + err.message, 'error');

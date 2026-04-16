@@ -40,10 +40,10 @@ var DEFAULTS_SCHEDULE = {
 };
 
 var SAFE_RANGES = {
-    'inp-temp-min': { min: 18, max: 32, unit: '°C', label: 'Temp Min' },
-    'inp-temp-max': { min: 19, max: 35, unit: '°C', label: 'Temp Max' },
-    'inp-ph-min': { min: 5.5, max: 8.0, unit: '', label: 'pH Min' },
-    'inp-ph-max': { min: 6.0, max: 9.0, unit: '', label: 'pH Max' },
+    'inp-temp-min': { min: 18, max: 32, unit: '°C', label: 'Nhiệt độ thấp nhất' },
+    'inp-temp-max': { min: 19, max: 35, unit: '°C', label: 'Nhiệt độ cao nhất' },
+    'inp-ph-min': { min: 5.5, max: 8.0, unit: '', label: 'pH thấp nhất' },
+    'inp-ph-max': { min: 6.0, max: 9.0, unit: '', label: 'pH cao nhất' },
     'inp-pump-out': { min: 10, max: 300, unit: 's', label: 'Bơm ra' },
     'inp-pump-in': { min: 10, max: 600, unit: 's', label: 'Bơm vào' },
 };
@@ -94,7 +94,7 @@ var wcState = 'IDLE';
 function onStatusSnap(snap) {
     if (!snap.exists()) return;
     document.getElementById('dot-online').className = 'status-dot online';
-    document.getElementById('txt-online').textContent = 'Online';
+    document.getElementById('txt-online').textContent = 'Trực tuyến';
 }
 
 function onConfigSnap(snap) {
@@ -218,14 +218,14 @@ function updatePreviews() {
     var tMax = parseFloat(getVal('inp-temp-max'));
     document.getElementById('prev-temp').textContent =
         (!isNaN(tMin) && !isNaN(tMax)) ?
-        '→ Heater bật < ' + tMin + '°C  |  Cooler bật > ' + tMax + '°C' :
+        '→ Bộ sưởi bật dưới ' + tMin + '°C  |  Làm mát bật trên ' + tMax + '°C' :
         '→ --';
 
     var pMin = parseFloat(getVal('inp-ph-min'));
     var pMax = parseFloat(getVal('inp-ph-max'));
     document.getElementById('prev-ph').textContent =
         (!isNaN(pMin) && !isNaN(pMax)) ?
-        '→ Vùng an toàn [' + pMin + ' ~ ' + pMax + ']  |  setpoint ' + (((pMin + pMax) / 2).toFixed(2)) :
+        '→ Vùng an toàn [' + pMin + ' ~ ' + pMax + ']  |  mốc giữa ' + (((pMin + pMax) / 2).toFixed(2)) :
         '→ --';
 
     var tgt = parseInt(getVal('inp-tds-target'));
@@ -262,9 +262,9 @@ function updateDosePreviews() {
     var phRef = isNaN(pMax) ? 7.5 : pMax;
 
     prevEl.textContent =
-        '→ Mỗi ' + intervalMin + ' phút: warm-up ' + warmupS + 's + lấy mẫu ' + collectS + 's  |  ' +
+        '→ Mỗi ' + intervalMin + ' phút: chờ ổn định ' + warmupS + ' giây + lấy mẫu ' + collectS + ' giây  |  ' +
         'pH=' + phRef + '+0.2 → ' + pulse1 + 'ms  |  ' +
-        'pH=' + phRef + '+0.5 → ' + pulse2 + 'ms  |  max ' + maxMs + 'ms';
+        'pH=' + phRef + '+0.5 → ' + pulse2 + 'ms  |  tối đa ' + maxMs + 'ms';
 }
 
 function updateSchedulePreviews() {
@@ -408,7 +408,7 @@ function checkSafetyAlerts() {
     var session = parseInt(getVal('inp-session-duration-s'));
     var iv = parseInt(getVal('inp-measure-interval-min')) * 60;
     if (!isNaN(session) && !isNaN(iv) && session > iv) {
-        alerts.push('⚠ Thời gian session không được dài hơn chu kỳ đo');
+        alerts.push('⚠ Thời gian phiên đo không được dài hơn chu kỳ đo');
     }
 
     var banner = document.getElementById('safety-alert-banner');
@@ -650,7 +650,7 @@ function setInputErr(id, show) {
 function fmtSec(s) {
     var m = Math.floor(s / 60),
         r = s % 60;
-    return m > 0 ? m + 'm ' + r + 's' : r + 's';
+    return m > 0 ? m + ' phút ' + r + ' giây' : r + ' giây';
 }
 
 function fmtTimestampVN(ms) {

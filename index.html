@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aquarium Dashboard</title>
+    <title>Theo dõi bể cá — Bể cá thông minh</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/style-additions.css">
 </head>
@@ -14,31 +14,31 @@
 
         <!-- ── HEADER ──────────────────────────────────────────────── -->
         <header class="app-header">
-            <span class="header-brand">🐟 Aquarium</span>
+            <span class="header-brand">Bể cá thông minh</span>
 
             <div class="header-status">
                 <span class="status-dot offline" id="dot-online"></span>
-                <span id="txt-online">Offline</span>
+                <span id="txt-online">Ngoại tuyến</span>
             </div>
 
             <span class="header-uptime mono" id="txt-uptime">↑ --</span>
 
             <nav class="header-nav">
-                <a href="index.html" class="active">Dashboard</a>
-                <a href="user-settings.html">Settings</a>
-                <a href="admin.html">Admin</a>
+                <a href="index.html" class="active">Theo dõi</a>
+                <a href="user-settings.html">Cài đặt</a>
+                <a href="admin.html">Quản trị</a>
                 <button id="btn-logout" onclick="import('./js/firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
             </nav>
 
             <!-- Mobile hamburger -->
             <div class="mobile-menu" id="mobile-menu">
-                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Trình đơn">
                     <span></span><span></span><span></span>
                 </button>
                 <div class="mobile-dropdown" id="mobile-dropdown">
-                    <a href="index.html" class="active">Dashboard</a>
-                    <a href="user-settings.html">Settings</a>
-                    <a href="admin.html">Admin</a>
+                    <a href="index.html" class="active">Theo dõi</a>
+                    <a href="user-settings.html">Cài đặt</a>
+                    <a href="admin.html">Quản trị</a>
                     <div class="mobile-dropdown-divider"></div>
                     <button onclick="import('./js/firebase-init.js').then(m => m.doLogout())">Đăng xuất</button>
                 </div>
@@ -47,7 +47,7 @@
 
         <!-- Safe mode banner -->
         <div class="safe-mode-banner" id="banner-safe-mode">
-            ⚠ SAFE MODE — Hệ thống đang ở chế độ an toàn
+            ⚠ Chế độ an toàn — Hệ thống đang tự bảo vệ
         </div>
 
         <!-- Offline banner -->
@@ -58,14 +58,14 @@
         <!-- Firmware stale banner (độc lập, không bị shock đè) -->
         <div class="stale-banner" id="banner-stale">
             <span class="stale-banner-icon">⏱</span>
-            <span class="stale-banner-text">Firmware không phản hồi — không nhận được dữ liệu trong 30 giây</span>
+            <span class="stale-banner-text">Bộ điều khiển không phản hồi — không nhận được dữ liệu trong 30 giây</span>
         </div>
 
         <!-- Shock Dialog Overlay -->
         <div class="shock-dialog-overlay" id="shock-dialog-overlay">
             <div class="shock-dialog">
                 <div class="shock-dialog-icon">⚡</div>
-                <h3 class="shock-dialog-title" id="shock-dialog-title">Shock phát hiện</h3>
+                <h3 class="shock-dialog-title" id="shock-dialog-title">Phát hiện sốc</h3>
                 <p class="shock-dialog-label" id="shock-dialog-label">Giá trị</p>
                 <div class="shock-dialog-values">
                     <div class="shock-dialog-val-block">
@@ -97,7 +97,7 @@
                                 <span class="card-title">Nhiệt độ</span>
                                 <div class="flex gap-sm" style="align-items:center">
                                     <span class="status-dot ok" id="dot-temp"></span>
-                                    <span class="source-badge measured" id="badge-temp-src">MEAS</span>
+                                    <span class="source-badge measured" id="badge-temp-src">ĐO</span>
                                 </div>
                             </div>
                             <div class="gauge-wrap">
@@ -125,7 +125,7 @@
                                 <span class="card-title">Độ pH</span>
                                 <div class="flex gap-sm" style="align-items:center">
                                     <span class="status-dot ok" id="dot-ph"></span>
-                                    <span class="source-badge measured" id="badge-ph-src">MEAS</span>
+                                    <span class="source-badge measured" id="badge-ph-src">ĐO</span>
                                 </div>
                             </div>
                             <div class="gauge-wrap">
@@ -149,10 +149,10 @@
                         <!-- Card TDS -->
                         <div class="card" id="card-tds">
                             <div class="sensor-header">
-                                <span class="card-title">TDS</span>
+                                <span class="card-title">Chất rắn hòa tan (TDS)</span>
                                 <div class="flex gap-sm" style="align-items:center">
                                     <span class="status-dot ok" id="dot-tds"></span>
-                                    <span class="source-badge measured" id="badge-tds-src">MEAS</span>
+                                    <span class="source-badge measured" id="badge-tds-src">ĐO</span>
                                 </div>
                             </div>
                             <div class="gauge-wrap">
@@ -178,56 +178,96 @@
                 </div>
                 <!-- /sensor-row -->
 
+                <!-- THÔNG TIN HỆ THỐNG -->
+                <div class="card system-info-card temp-marker" style="grid-column:1/-1">
+                    <div class="system-info-header">
+                        <div>
+                            <div class="card-title" style="margin-bottom:4px">Thông tin hệ thống</div>
+                            <div class="text-sm text-sub">Tóm tắt nhanh trạng thái bộ điều khiển và kết nối hiện tại</div>
+                        </div>
+                        <span class="system-info-pill" id="pill-system-health">Đang cập nhật</span>
+                    </div>
+
+                    <div class="system-info-grid">
+                        <div class="system-info-item">
+                            <span class="system-info-label">Thời gian hoạt động</span>
+                            <span class="system-info-value mono" id="sys-uptime">--</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Kết nối Firebase</span>
+                            <span class="system-info-value" id="sys-cloud">--</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Bộ điều khiển</span>
+                            <span class="system-info-value" id="sys-controller">--</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Chế độ an toàn</span>
+                            <span class="system-info-value" id="sys-safe-mode">--</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Tín hiệu Wi‑Fi</span>
+                            <span class="system-info-value" id="sys-wifi">--</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Mạng Wi‑Fi</span>
+                            <span class="system-info-value" id="sys-ssid">--</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Dữ liệu gần nhất</span>
+                            <span class="system-info-value" id="sys-last-telemetry">--</span>
+                        </div>
+                        <div class="system-info-item">
+                            <span class="system-info-label">Thiết bị đang bật</span>
+                            <span class="system-info-value" id="sys-active-relays">--</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ── COL LEFT ─────────────────────────────────────── -->
                 <div style="display:flex; flex-direction:column; gap:var(--gap)">
 
                     <!-- RELAY -->
                     <div class="card">
-                        <div class="card-title">Relay</div>
+                        <div class="card-title">Thiết bị điều khiển</div>
                         <div class="relay-grid">
                             <div class="relay-item" id="relay-heater">
-                                <span class="relay-icon">🔥</span>
-                                <span class="relay-name">Heater</span>
+                                <span class="relay-name">Sưởi</span>
                                 <div class="toggle" id="toggle-heater">
                                     <div class="toggle-track"></div>
                                     <div class="toggle-thumb"></div>
                                 </div>
                             </div>
                             <div class="relay-item" id="relay-cooler">
-                                <span class="relay-icon">❄️</span>
-                                <span class="relay-name">Cooler</span>
+                                <span class="relay-name">Làm mát</span>
                                 <div class="toggle" id="toggle-cooler">
                                     <div class="toggle-track"></div>
                                     <div class="toggle-thumb"></div>
                                 </div>
                             </div>
                             <div class="relay-item" id="relay-ph-up">
-                                <span class="relay-icon">⬆️</span>
-                                <span class="relay-name">pH Up</span>
+                                <span class="relay-name">Tăng pH</span>
                                 <div class="toggle" id="toggle-ph-up">
                                     <div class="toggle-track"></div>
                                     <div class="toggle-thumb"></div>
                                 </div>
                             </div>
                             <div class="relay-item" id="relay-ph-down">
-                                <span class="relay-icon">⬇️</span>
-                                <span class="relay-name">pH Down</span>
+                                <span class="relay-name">Giảm pH</span>
                                 <div class="toggle" id="toggle-ph-down">
                                     <div class="toggle-track"></div>
                                     <div class="toggle-thumb"></div>
                                 </div>
                             </div>
                             <div class="relay-item" id="relay-pump-in">
-                                <span class="relay-icon">💧</span>
-                                <span class="relay-name">Pump In</span>
+                                <span class="relay-name">Bơm vào</span>
                                 <div class="toggle" id="toggle-pump-in">
                                     <div class="toggle-track"></div>
                                     <div class="toggle-thumb"></div>
                                 </div>
                             </div>
                             <div class="relay-item" id="relay-pump-out">
-                                <span class="relay-icon">🚰</span>
-                                <span class="relay-name">Pump Out</span>
+                                <span class="relay-name">Bơm ra</span>
                                 <div class="toggle" id="toggle-pump-out">
                                     <div class="toggle-track"></div>
                                     <div class="toggle-thumb"></div>
@@ -240,10 +280,10 @@
                     <div class="card">
                         <div class="card-title">Thay nước</div>
                         <div class="wc-panel">
-                            <span class="wc-state-badge idle" id="wc-state-badge">IDLE</span>
+                            <span class="wc-state-badge idle" id="wc-state-badge">NGHỈ</span>
                             <span class="text-sm text-sub" id="wc-last-run">Lần cuối: --</span>
                             <button class="btn btn-primary btn-sm ml-auto" id="btn-water-change" onclick="triggerWaterChange()">
-                            💧 Thay ngay
+                            Thay nước ngay
                         </button>
                         </div>
 
@@ -268,11 +308,11 @@
 
                     <!-- ANALYTICS -->
                     <div class="card">
-                        <div class="card-title">Analytics</div>
+                        <div class="card-title">Phân tích</div>
                         <div class="analytics-grid">
                             <!-- WSI gauge -->
                             <div class="analytics-gauge-wrap">
-                                <span class="analytics-gauge-label">WSI</span>
+                                <span class="analytics-gauge-label">Nước (WSI)</span>
                                 <svg width="80" height="48" viewBox="0 0 80 48">
                                 <path class="gauge-track"
                                       d="M6,44 A34,34 0 0,1 74,44"
@@ -289,7 +329,7 @@
 
                             <!-- FSI gauge -->
                             <div class="analytics-gauge-wrap">
-                                <span class="analytics-gauge-label">FSI</span>
+                                <span class="analytics-gauge-label">Dao động (FSI)</span>
                                 <svg width="80" height="48" viewBox="0 0 80 48">
                                 <path class="gauge-track"
                                       d="M6,44 A34,34 0 0,1 74,44"
@@ -306,14 +346,14 @@
                         </div>
 
                         <div class="drift-row mt-sm" id="drift-row">
-                            <span class="text-sub">Drift — </span> T: <span id="drift-temp" class="drift-none">NONE</span> &nbsp; TDS: <span id="drift-tds" class="drift-none">NONE</span>
+                            <span class="text-sub">Dự đoán — </span> T: <span id="drift-temp" class="drift-none">KHÔNG</span> &nbsp; TDS: <span id="drift-tds" class="drift-none">KHÔNG</span>
                         </div>
                     </div>
 
                     <!-- SHOCK LOG -->
                     <div class="card">
                         <div class="flex" style="align-items:center; margin-bottom:12px">
-                            <span class="card-title" style="margin:0">⚡ Shock Log</span>
+                            <span class="card-title" style="margin:0"> Lịch sử sốc</span>
                             <span class="log-count-badge hidden" id="shock-log-badge">0</span>
                         </div>
                         <div class="log-scroll">
@@ -330,19 +370,19 @@
                                 <tbody id="shock-log-body">
                                     <tr>
                                         <td colspan="5" style="text-align:center;color:var(--text-dim);padding:16px 0;font-size:0.75rem">
-                                            Chưa có sự kiện shock
+                                            Chưa có sự kiện sốc
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                        <p class="shock-log-hint">Nhấn vào hàng chưa đọc để xem chi tiết & đánh dấu đã đọc</p>
+                        <p class="shock-log-hint">Nhấn vào hàng chưa đọc để xem chi tiết và đánh dấu đã đọc</p>
                     </div>
 
                     <!-- SAFETY LOG -->
                     <div class="card" id="safety-log-panel">
                         <div class="flex" style="align-items:center; margin-bottom:12px; cursor:pointer" onclick="toggleSafetyLog()">
-                            <span class="card-title" style="margin:0">🛡 Safety Log</span>
+                            <span class="card-title" style="margin:0">Lịch sử an toàn</span>
                             <span class="log-count-badge hidden" id="log-count-badge">0</span>
                             <span style="margin-left:auto;font-size:0.75rem;color:var(--text-dim)" id="safety-log-toggle-hint">▼ nhấn để xem & đánh dấu đã đọc</span>
                         </div>
@@ -369,12 +409,9 @@
             <section class="chart-section">
 
                 <div class="chart-section-header">
-                    <h2 class="chart-section-title">📈 Lịch sử 12 giờ</h2>
+                    <h2 class="chart-section-title">Lịch sử 12 giờ</h2>
                     <div class="chart-header-right">
                         <span class="chart-last-update" id="chart-last-update">--</span>
-                        <button class="btn btn-ghost btn-sm" onclick="exportChartCSV()">
-                            ⬇ Xuất CSV
-                        </button>
                     </div>
                 </div>
 
@@ -383,7 +420,7 @@
                     <!-- Nhiệt độ -->
                     <div class="chart-card">
                         <div class="chart-card-header">
-                            <span class="chart-card-title temp">🌡 Nhiệt độ</span>
+                            <span class="chart-card-title temp">Nhiệt độ</span>
                             <span class="chart-card-unit temp">°C</span>
                         </div>
                         <div class="chart-canvas-wrap">
@@ -394,7 +431,7 @@
                     <!-- pH -->
                     <div class="chart-card">
                         <div class="chart-card-header">
-                            <span class="chart-card-title ph">⚗ Độ pH</span>
+                            <span class="chart-card-title ph">Độ pH</span>
                             <span class="chart-card-unit ph">pH</span>
                         </div>
                         <div class="chart-canvas-wrap">
@@ -405,7 +442,7 @@
                     <!-- TDS -->
                     <div class="chart-card">
                         <div class="chart-card-header">
-                            <span class="chart-card-title tds">💎 TDS</span>
+                            <span class="chart-card-title tds">Tổng chất rắn hòa tan</span>
                             <span class="chart-card-unit tds">ppm</span>
                         </div>
                         <div class="chart-canvas-wrap">
