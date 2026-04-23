@@ -161,12 +161,7 @@ function onWaterChangeSnap(snap) {
 function onWaterScheduleSnap(snap) {
     var d = snap.exists() ? snap.val() : {};
     currentSchedule = Object.assign({}, DEFAULTS_SCHEDULE, d);
-    formSchedule = {
-        hour: currentSchedule.hour,
-        minute: currentSchedule.minute,
-        pump_out_sec: currentSchedule.pump_out_sec,
-        pump_in_sec: currentSchedule.pump_in_sec,
-    };
+    formSchedule = pickEditableSchedule(currentSchedule);
     scheduleEnabled = !!currentSchedule.enabled;
 
     applyScheduleToggleUI(scheduleEnabled);
@@ -332,20 +327,21 @@ function validateConfig() {
 function isDirty() {
     return JSON.stringify(formConfig) !== JSON.stringify(currentConfig) ||
         JSON.stringify(formDose) !== JSON.stringify(currentDose) ||
-        JSON.stringify(formSchedule) !== JSON.stringify(currentSchedule) ||
+        JSON.stringify(formSchedule) !== JSON.stringify(pickEditableSchedule(currentSchedule)) ||
         scheduleEnabled !== !!currentSchedule.enabled;
 }
 
 function countDirtyFields() {
     var n = 0;
+    var currentScheduleEditable = pickEditableSchedule(currentSchedule);
     Object.keys(currentConfig).forEach(function(k) {
         if (formConfig[k] !== currentConfig[k]) n++;
     });
     Object.keys(currentDose).forEach(function(k) {
         if (formDose[k] !== currentDose[k]) n++;
     });
-    Object.keys(currentSchedule).forEach(function(k) {
-        if (k !== 'enabled' && formSchedule[k] !== currentSchedule[k]) n++;
+    Object.keys(currentScheduleEditable).forEach(function(k) {
+        if (formSchedule[k] !== currentScheduleEditable[k]) n++;
     });
     if (scheduleEnabled !== !!currentSchedule.enabled) n++;
     return n;
@@ -476,7 +472,7 @@ window.toggleSchedule = function() {
 
 function applyScheduleToggleUI(enabled) {
     document.getElementById('toggle-schedule').classList.toggle('on', enabled);
-    var inputs = document.getElementById('schedule-inputs');
+    var inputs = document.getElementById('schedule-timing-inputs');
     inputs.style.opacity = enabled ? '1' : '0.3';
     inputs.style.pointerEvents = enabled ? 'auto' : 'none';
     document.getElementById('lbl-schedule').textContent =
@@ -647,6 +643,15 @@ function setInputErr(id, show) {
     if (el) el.classList.toggle('input-error', show);
 }
 
+function pickEditableSchedule(schedule) {
+    return {
+        hour: schedule.hour,
+        minute: schedule.minute,
+        pump_out_sec: schedule.pump_out_sec,
+        pump_in_sec: schedule.pump_in_sec,
+    };
+}
+
 function fmtSec(s) {
     var m = Math.floor(s / 60),
         r = s % 60;
@@ -678,12 +683,12 @@ function buildHourOptions() {
 function buildMinuteOptions() {
     var sel = document.getElementById('inp-minute');
     if (!sel) return;
-    [0, 15, 30, 45].forEach(function(m) {
+    for (var m = 0; m < 60; m++) {
         var o = document.createElement('option');
         o.value = m;
         o.textContent = String(m).padStart(2, '0');
         sel.appendChild(o);
-    });
+    }
 }
 
 function showToast(msg, type) {

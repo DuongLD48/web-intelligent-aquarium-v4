@@ -833,7 +833,7 @@ body {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 1.4rem;
     font-weight: 700;
-    color: var(--text-main);
+    color: var(--accent-err, #f87171);
 }
 
 .shock-dialog-val.after {

@@ -187,7 +187,7 @@
                         <span class="text-sm" id="lbl-schedule">Lịch tự động: Tắt</span>
                     </div>
 
-                    <div id="schedule-inputs" style="opacity:0.3; pointer-events:none; transition:opacity 0.2s">
+                    <div id="schedule-timing-inputs" style="opacity:0.3; pointer-events:none; transition:opacity 0.2s">
                         <div class="input-row">
                             <div class="form-group">
                                 <label class="form-label">Giờ</label>
@@ -198,19 +198,22 @@
                                 <select class="form-input" id="inp-minute"></select>
                             </div>
                         </div>
-                        <div class="input-row" style="margin-top:var(--gap)">
-                            <div class="form-group">
-                                <label class="form-label">Bơm ra (giây)</label>
-                                <input class="form-input" type="number" id="inp-pump-out" min="10" max="600" step="5">
-                                <span class="form-error" id="err-pump">Tối thiểu 10 giây</span>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Bơm vào (giây)</label>
-                                <input class="form-input" type="number" id="inp-pump-in" min="10" max="1200" step="5">
-                            </div>
-                        </div>
-                        <div class="form-preview mt-sm" id="prev-pump">→ --</div>
                     </div>
+
+                    <div class="input-row" style="margin-top:var(--gap)">
+                        <div class="form-group">
+                            <label class="form-label">Bơm ra (giây)</label>
+                            <input class="form-input" type="number" id="inp-pump-out" min="10" max="600" step="5">
+                            <span class="form-error" id="err-pump">Tối thiểu 10 giây</span>
+                            <span class="param-desc">Luôn có thể chỉnh, kể cả khi tắt lịch tự động</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Bơm vào (giây)</label>
+                            <input class="form-input" type="number" id="inp-pump-in" min="10" max="1200" step="5">
+                            <span class="param-desc">Áp dụng cho cả lịch hẹn giờ và thao tác thay nước ngay</span>
+                        </div>
+                    </div>
+                    <div class="form-preview mt-sm" id="prev-pump">→ --</div>
 
                     <div style="margin-top:16px">
                         <button class="btn btn-primary btn-full" id="btn-water-now" onclick="triggerWaterChange()">
